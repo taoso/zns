@@ -36,7 +36,17 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if m.IsEdns0() == nil {
+	var hasSubnet bool
+	if e := m.IsEdns0(); e != nil {
+		for _, o := range e.Option {
+			if o.Option() == dns.EDNS0SUBNET {
+				hasSubnet = true
+				break
+			}
+		}
+	}
+
+	if !hasSubnet {
 		ip, err := netip.ParseAddrPort(r.RemoteAddr)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
