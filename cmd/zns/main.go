@@ -17,6 +17,7 @@ var tlsKey string
 var tlsHosts string
 var listen string
 var upstream string
+var dbPath string
 
 func main() {
 	flag.StringVar(&tlsCert, "tls-cert", "", "tls cert file path")
@@ -24,6 +25,7 @@ func main() {
 	flag.StringVar(&tlsHosts, "tls-hosts", "", "tls host name")
 	flag.StringVar(&listen, "listen", ":443", "listen addr")
 	flag.StringVar(&upstream, "upstream", "https://doh.pub/dns-query", "DoH upstream URL")
+	flag.StringVar(&dbPath, "db", "", "sqlite database file path")
 
 	flag.Parse()
 
@@ -50,8 +52,13 @@ func main() {
 		panic(err)
 	}
 
+	repo := zns.NewTicketRepo(dbPath)
+	repo.New("foo", 2048, "pay-1")
+
+	h := zns.Handler{Upstream: upstream, Repo: repo}
+
 	mux := http.NewServeMux()
-	mux.Handle("/dns/{name}", zns.Handler{Upstream: upstream})
+	mux.Handle("/dns/{token}", h)
 
 	if err = http.Serve(lnTLS, mux); err != nil {
 		log.Fatal(err)

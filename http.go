@@ -13,16 +13,32 @@ import (
 
 type Handler struct {
 	Upstream string
+	Repo     TicketRepo
 }
 
 func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	var body []byte
-	var err error
+	token := r.PathValue("token")
+	if token == "" {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	ts, err := h.Repo.List(token, 1)
+	if err != nil {
+		http.Error(w, "invalid token", http.StatusInternalServerError)
+		return
+	}
+	if len(ts) == 0 || ts[0].Bytes <= 0 {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
+		return
+	}
+
+	var question []byte
 	if r.Method == http.MethodGet {
 		q := r.URL.Query().Get("dns")
-		body, err = base64.RawURLEncoding.DecodeString(q)
+		question, err = base64.RawURLEncoding.DecodeString(q)
 	} else {
-		body, err = io.ReadAll(r.Body)
+		question, err = io.ReadAll(r.Body)
 		r.Body.Close()
 	}
 	if err != nil {
@@ -31,7 +47,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var m dns.Msg
-	if err := m.Unpack(body); err != nil {
+	if err := m.Unpack(question); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -70,23 +86,28 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		m.Extra = append(m.Extra, opt)
 	}
 
-	if body, err = m.Pack(); err != nil {
+	if question, err = m.Pack(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	resp, err := http.Post(h.Upstream, "application/dns-message", bytes.NewReader(body))
+	resp, err := http.Post(h.Upstream, "application/dns-message", bytes.NewReader(question))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer resp.Body.Close()
 
-	body, err = io.ReadAll(resp.Body)
+	answer, err := io.ReadAll(resp.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.Write(body)
+	if err = h.Repo.Cost(token, len(question)+len(answer)); err != nil {
+		http.Error(w, err.Error(), http.StatusUnauthorized)
+		return
+	}
+
+	w.Write(answer)
 }
