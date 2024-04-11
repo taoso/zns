@@ -10,7 +10,7 @@ import (
 func TestRepo(t *testing.T) {
 	r := NewTicketRepo(":memory:")
 
-	err := r.New("foo", 100, "pay-1")
+	err := r.New("foo", 100, "buy-1", "pay-1")
 	assert.Nil(t, err)
 
 	ts, err := r.List("foo", 2)
@@ -37,10 +37,10 @@ func TestRepo(t *testing.T) {
 	assert.Equal(t, 1, len(ts))
 	assert.Equal(t, 50, ts[0].Bytes)
 
-	err = r.New("foo", 30, "pay-2")
+	err = r.New("foo", 30, "buy-2", "pay-2")
 	assert.Nil(t, err)
 
-	err = r.New("foo", 40, "pay-3")
+	err = r.New("foo", 40, "buy-3", "pay-3")
 	assert.Nil(t, err)
 
 	err = r.Cost("foo", 110)
@@ -60,10 +60,10 @@ func TestRepo(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, -10, ts[0].Bytes)
 
-	err = r.New("foo", 40, "pay-4")
+	err = r.New("foo", 40, "buy-4", "pay-4")
 	assert.Nil(t, err)
 
-	err = r.New("foo", 10, "pay-5")
+	err = r.New("foo", 10, "buy-5", "pay-5")
 	assert.Nil(t, err)
 
 	err = r.Cost("foo", 65)
