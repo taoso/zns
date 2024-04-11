@@ -18,6 +18,7 @@ var tlsHosts string
 var listen string
 var upstream string
 var dbPath string
+var price int
 
 func main() {
 	flag.StringVar(&tlsCert, "tls-cert", "", "tls cert file path")
@@ -26,6 +27,7 @@ func main() {
 	flag.StringVar(&listen, "listen", ":443", "listen addr")
 	flag.StringVar(&upstream, "upstream", "https://doh.pub/dns-query", "DoH upstream URL")
 	flag.StringVar(&dbPath, "db", "", "sqlite database file path")
+	flag.IntVar(&price, "price", 1024, "Traffic MB/Yuan")
 
 	flag.Parse()
 
@@ -65,7 +67,7 @@ func main() {
 	}
 
 	h := zns.Handler{Upstream: upstream, Repo: repo}
-	th := zns.TicketHandler{Pay: pay, Repo: repo}
+	th := zns.TicketHandler{MBpCNY: price, Pay: pay, Repo: repo}
 
 	mux := http.NewServeMux()
 	mux.Handle("/dns/{token}", h)
