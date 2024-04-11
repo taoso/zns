@@ -21,13 +21,13 @@ var dbPath string
 var price int
 
 func main() {
-	flag.StringVar(&tlsCert, "tls-cert", "", "tls cert file path")
-	flag.StringVar(&tlsKey, "tls-key", "", "tls key file path")
-	flag.StringVar(&tlsHosts, "tls-hosts", "", "tls host name")
-	flag.StringVar(&listen, "listen", ":443", "listen addr")
+	flag.StringVar(&tlsCert, "tls-cert", "", "File path of TLS certificate")
+	flag.StringVar(&tlsKey, "tls-key", "", "File path of TLS key")
+	flag.StringVar(&tlsHosts, "tls-hosts", "", "Host name for ACME")
+	flag.StringVar(&listen, "listen", ":443", "Listen address")
 	flag.StringVar(&upstream, "upstream", "https://doh.pub/dns-query", "DoH upstream URL")
-	flag.StringVar(&dbPath, "db", "", "sqlite database file path")
-	flag.IntVar(&price, "price", 1024, "Traffic MB/Yuan")
+	flag.StringVar(&dbPath, "db", "", "File path of Sqlite database")
+	flag.IntVar(&price, "price", 1024, "Traffic price MB/Yuan")
 
 	flag.Parse()
 
