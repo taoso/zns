@@ -16,11 +16,12 @@ import (
 )
 
 type Ticket struct {
-	ID         int    `db:"id" json:"-"`
-	Token      string `db:"token" json:"token"`
+	ID         int    `db:"id" json:"id"`
+	Token      string `db:"token" json:"-"`
 	Bytes      int    `db:"bytes" json:"bytes"`
 	TotalBytes int    `db:"total_bytes" json:"total_bytes"`
 	PayOrder   string `db:"pay_order" json:"pay_order"`
+	BuyOrder   string `db:"buy_order" json:"buy_order"`
 
 	Created time.Time `db:"created" json:"created"`
 	Updated time.Time `db:"updated" json:"updated"`
@@ -36,6 +37,7 @@ func (t *Ticket) Schema() string {
 	bytes INTEGER,
 	total_bytes INTEGER,
 	pay_order TEXT,
+	buy_order TEXT,
 	created DATETIME,
 	updated DATETIME,
 	expires DATETIME
@@ -46,7 +48,7 @@ func (t *Ticket) Schema() string {
 
 type TicketRepo interface {
 	// New create and save one Ticket
-	New(token string, bytes int, order string) error
+	New(token string, bytes int, trade string, order string) error
 	// Cost decreases  bytes of one Ticket
 	Cost(token string, bytes int) error
 	// List fetches all current Tickets with bytes available.
@@ -65,7 +67,7 @@ func NewTicketRepo(path string) TicketRepo {
 
 type FreeTicketRepo struct{}
 
-func (r FreeTicketRepo) New(token string, bytes int, order string) error {
+func (r FreeTicketRepo) New(token string, bytes int, trade, order string) error {
 	return nil
 }
 
@@ -93,7 +95,7 @@ func expires(t time.Time) time.Time {
 	return time.Date(year, month, day, 0, 0, 0, 0, t.Location())
 }
 
-func (r sqliteTicketReop) New(token string, bytes int, order string) error {
+func (r sqliteTicketReop) New(token string, bytes int, trade, order string) error {
 	now := time.Now()
 
 	t := Ticket{
@@ -101,6 +103,7 @@ func (r sqliteTicketReop) New(token string, bytes int, order string) error {
 		Bytes:      bytes,
 		TotalBytes: bytes,
 		PayOrder:   order,
+		BuyOrder:   trade,
 		Created:    now,
 		Updated:    now,
 		Expires:    expires(now),
@@ -238,7 +241,8 @@ func (h TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(struct {
 			QR    string `json:"qr"`
 			Token string `json:"token"`
-		}{QR: qr, Token: req.Token})
+			Order string `json:"order"`
+		}{QR: qr, Token: req.Token, Order: o.OrderNo})
 	} else {
 		o, err := h.Pay.OnPay(r)
 		if err != nil {
@@ -257,7 +261,7 @@ func (h TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		bytes := int(yuan * float64(h.MBpCNY) * 1024 * 1024)
 
-		err = h.Repo.New(token, bytes, o.TradeNo)
+		err = h.Repo.New(token, bytes, o.OrderNo, o.TradeNo)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
