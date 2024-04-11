@@ -16,15 +16,15 @@ import (
 )
 
 type Ticket struct {
-	ID         int    `db:"id"`
-	Token      string `db:"token"`
-	Bytes      int    `db:"bytes"`
-	TotalBytes int    `db:"total_bytes"`
-	PayOrder   string `db:"pay_order"`
+	ID         int    `db:"id" json:"-"`
+	Token      string `db:"token" json:"token"`
+	Bytes      int    `db:"bytes" json:"bytes"`
+	TotalBytes int    `db:"total_bytes" json:"total_bytes"`
+	PayOrder   string `db:"pay_order" json:"pay_order"`
 
-	Created time.Time `db:"created"`
-	Updated time.Time `db:"updated"`
-	Expires time.Time `db:"expires"`
+	Created time.Time `db:"created" json:"created"`
+	Updated time.Time `db:"updated" json:"updated"`
+	Expires time.Time `db:"expires" json:"expires"`
 }
 
 func (_ *Ticket) KeyName() string   { return "id" }
@@ -166,6 +166,18 @@ type TicketHandler struct {
 }
 
 func (h TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.Method == http.MethodGet {
+		token := r.PathValue("token")
+		ts, err := h.Repo.List(token, 10)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		w.Header().Add("content-type", "application/json")
+		json.NewEncoder(w).Encode(ts)
+		return
+	}
+
 	if r.URL.Query().Get("buy") != "" {
 		req := struct {
 			Token string `json:"token"`
