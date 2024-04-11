@@ -1,7 +1,13 @@
 package zns
 
 import (
+	"crypto/rand"
+	"encoding/base64"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-kiss/sqlx"
@@ -152,4 +158,84 @@ func (r sqliteTicketReop) List(token string, limit int) (tickets []Ticket, err e
 		" where token = ? order by expires desc limit ?"
 	err = r.db.Select(&tickets, sql, token, limit)
 	return
+}
+
+type TicketHandler struct {
+	Pay  Pay
+	Repo TicketRepo
+}
+
+func (h TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.URL.Query().Get("buy") != "" {
+		req := struct {
+			Token string `json:"token"`
+			Cents int    `json:"cents"`
+		}{}
+		defer r.Body.Close()
+		err := json.NewDecoder(r.Body).Decode(&req)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		if req.Cents < 10 {
+			http.Error(w, "cents must > 10", http.StatusBadRequest)
+			return
+		}
+
+		if req.Token == "" {
+			b := make([]byte, 16)
+			_, err := rand.Read(b)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			req.Token = base64.RawURLEncoding.EncodeToString(b)
+		}
+
+		now := time.Now().Format(time.RFC3339)
+		yuan := strconv.FormatFloat(float64(req.Cents)/100, 'f', 2, 64)
+		o := Order{
+			OrderNo: req.Token + "@" + now,
+			Amount:  yuan,
+		}
+
+		u := *r.URL
+		u.RawQuery = ""
+		u.Fragment = ""
+
+		qr, err := h.Pay.NewQR(o, u.String())
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Write([]byte(qr))
+	} else {
+		o, err := h.Pay.OnPay(r)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		i := strings.Index(o.OrderNo, "@")
+		token := o.OrderNo[:i]
+
+		yuan, err := strconv.ParseFloat(o.Amount, 64)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		// 1Yuan = 1024MB
+		bytes := int(yuan * 1024 * 1024 * 1024)
+
+		err = h.Repo.New(token, bytes, o.TradeNo)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		w.Write([]byte("success"))
+	}
 }

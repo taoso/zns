@@ -55,10 +55,18 @@ func main() {
 	repo := zns.NewTicketRepo(dbPath)
 	repo.New("foo", 2048, "pay-1")
 
+	pay := zns.NewPay(
+		os.Getenv("ALIPAY_APP_ID"),
+		os.Getenv("ALIPAY_PRIVATE_KEY"),
+		os.Getenv("ALIPAY_PUBLIC_KEY"),
+	)
+
 	h := zns.Handler{Upstream: upstream, Repo: repo}
+	th := zns.TicketHandler{Pay: pay, Repo: repo}
 
 	mux := http.NewServeMux()
 	mux.Handle("/dns/{token}", h)
+	mux.Handle("/ticket/", th)
 
 	if err = http.Serve(lnTLS, mux); err != nil {
 		log.Fatal(err)
