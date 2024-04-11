@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="user-scalable=no,
+      initial-scale=1,
+      maximum-scale=1,
+      minimum-scale=1,
+      width=device-width,
+      height=device-height">
+    <meta name="description" content="ZNS">
+    <meta name="referrer" content="same-origin">
+    <link rel="stylesheet" href="style.css">
+  </head>
+  <body>
+    <h1>ZNS.nu.mk</h1>
+    <dl>
+      <dt>🔒保护隐私</dt>
+      <dd>仅保存订单号、余额等必要信息，决不记录 DNS 查询行为。</dd>
+      <dt>🌐智能解析</dt>
+      <dd>基于 DoH + EDNS Client Subnet (ECS) 技术，海外无污染，国内无延迟。</dd>
+      <dt>👨‍💻开源社区</dt>
+      <dd>代码全部开源，MIT 授权协议，自由使用。</dd>
+      <dt>💰按量付费</dt>
+      <dd>一毛钱 100MB，<span style="color:red;">按自然月清零！</span></dd>
+    </dl>
+    <input id="cents" type="number" placeholder="金额(角)">
+    <button id="pay">支付宝付款</button>
+    <div id="qr-msg"></div>
+    <div id="qr"></div>
+    <table id="tickets" style="display:none;">
+      <caption>最近购买记录</caption>
+    </table>
+  </body>
+  <script src="qrcode.js"></script>
+  <script src="app.js"></script>
+</html>
