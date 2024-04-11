@@ -1,0 +1,19 @@
+#tickets {
+  border-top: dashed 1px gray;
+}
+
+#tickets tr {
+  border-bottom: 1px solid gray;
+}
+
+#tickets th {
+  text-align: right;
+}
+
+#qr {
+  width: 128px;
+}
+
+#qr-msg {
+  margin: 1em 0;
+}
