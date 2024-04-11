@@ -161,8 +161,9 @@ func (r sqliteTicketReop) List(token string, limit int) (tickets []Ticket, err e
 }
 
 type TicketHandler struct {
-	Pay  Pay
-	Repo TicketRepo
+	MBpCNY int
+	Pay    Pay
+	Repo   TicketRepo
 }
 
 func (h TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -239,8 +240,7 @@ func (h TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		// 1Yuan = 1024MB
-		bytes := int(yuan * 1024 * 1024 * 1024)
+		bytes := int(yuan * float64(h.MBpCNY) * 1024 * 1024)
 
 		err = h.Repo.New(token, bytes, o.TradeNo)
 		if err != nil {
