@@ -19,6 +19,7 @@ var listen string
 var upstream string
 var dbPath string
 var price int
+var free bool
 
 func main() {
 	flag.StringVar(&tlsCert, "tls-cert", "", "File path of TLS certificate")
@@ -28,6 +29,12 @@ func main() {
 	flag.StringVar(&upstream, "upstream", "https://doh.pub/dns-query", "DoH upstream URL")
 	flag.StringVar(&dbPath, "db", "", "File path of Sqlite database")
 	flag.IntVar(&price, "price", 1024, "Traffic price MB/Yuan")
+	flag.BoolVar(&free, "free", true, `Whether allow free access.
+If not free, you should set the following environment variables:
+	- ALIPAY_APP_ID
+	- ALIPAY_PRIVATE_KEY
+	- ALIPAY_PUBLIC_KEY
+`)
 
 	flag.Parse()
 
@@ -54,13 +61,14 @@ func main() {
 		panic(err)
 	}
 
-	repo := zns.NewTicketRepo(dbPath)
-	repo.New("foo", 2048, "pay-1")
-
 	var pay zns.Pay
-	if id := os.Getenv("ALIPAY_APP_ID"); id != "" {
+	var repo zns.TicketRepo
+	if free {
+		repo = zns.FreeTicketRepo{}
+	} else {
+		repo = zns.NewTicketRepo(dbPath)
 		pay = zns.NewPay(
-			id,
+			os.Getenv("ALIPAY_APP_ID"),
 			os.Getenv("ALIPAY_PRIVATE_KEY"),
 			os.Getenv("ALIPAY_PUBLIC_KEY"),
 		)
