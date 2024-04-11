@@ -227,17 +227,18 @@ func (h TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			Amount:  yuan,
 		}
 
-		u := *r.URL
-		u.RawQuery = ""
-		u.Fragment = ""
-
-		qr, err := h.Pay.NewQR(o, u.String())
+		notify := "https://" + r.Host + r.URL.Path
+		qr, err := h.Pay.NewQR(o, notify)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
 
-		w.Write([]byte(qr))
+		w.Header().Add("content-type", "application/json")
+		json.NewEncoder(w).Encode(struct {
+			QR    string `json:"qr"`
+			Token string `json:"token"`
+		}{QR: qr, Token: req.Token})
 	} else {
 		o, err := h.Pay.OnPay(r)
 		if err != nil {

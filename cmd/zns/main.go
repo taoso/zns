@@ -31,7 +31,7 @@ func main() {
 	flag.StringVar(&dbPath, "db", "", "File path of Sqlite database")
 	flag.StringVar(&root, "root", ".", "Root path of static files")
 	flag.IntVar(&price, "price", 1024, "Traffic price MB/Yuan")
-	flag.BoolVar(&free, "free", true, `Whether allow free access.
+	flag.BoolVar(&free, "free", false, `Whether allow free access.
 If not free, you should set the following environment variables:
 	- ALIPAY_APP_ID
 	- ALIPAY_PRIVATE_KEY
@@ -81,6 +81,7 @@ If not free, you should set the following environment variables:
 
 	mux := http.NewServeMux()
 	mux.Handle("/dns/{token}", h)
+	mux.Handle("/ticket/", th)
 	mux.Handle("/ticket/{token}", th)
 	mux.Handle("/", http.FileServer(http.Dir(root)))
 
