@@ -63,6 +63,20 @@ func NewTicketRepo(path string) TicketRepo {
 	return r
 }
 
+type FreeTicketRepo struct{}
+
+func (r FreeTicketRepo) New(token string, bytes int, order string) error {
+	return nil
+}
+
+func (r FreeTicketRepo) Cost(token string, bytes int) error {
+	return nil
+}
+
+func (r FreeTicketRepo) List(token string, limit int) ([]Ticket, error) {
+	return []Ticket{{Bytes: 100}}, nil
+}
+
 type sqliteTicketReop struct {
 	db *sqlx.DB
 }
