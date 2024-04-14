@@ -1,0 +1,11 @@
+[Unit]
+Description=zns udp socket
+
+[Socket]
+ListenDatagram=443
+BindIPv6Only=both
+FileDescriptorName=h3
+Service=zns.service
+
+[Install]
+WantedBy=sockets.target

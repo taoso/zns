@@ -14,9 +14,14 @@ import (
 type Handler struct {
 	Upstream string
 	Repo     TicketRepo
+	AltSvc   string
 }
 
-func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if h.AltSvc != "" {
+		w.Header().Set("Alt-Svc", h.AltSvc)
+	}
+
 	token := r.PathValue("token")
 	if token == "" {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
