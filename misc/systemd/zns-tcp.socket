@@ -1,0 +1,11 @@
+[Unit]
+Description=zns tcp socket
+
+[Socket]
+ListenStream=443
+BindIPv6Only=both
+FileDescriptorName=h12
+Service=zns.service
+
+[Install]
+WantedBy=sockets.target
