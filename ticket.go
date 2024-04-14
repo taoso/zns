@@ -56,7 +56,7 @@ type TicketRepo interface {
 }
 
 func NewTicketRepo(path string) TicketRepo {
-	db, err := sqlx.Connect("sqlite", path)
+	db, err := sqlx.Connect("sqlite", path+"?cache=shared&mode=rwc&_journal_mode=WAL")
 	if err != nil {
 		panic(err)
 	}
