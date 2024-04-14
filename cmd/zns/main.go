@@ -123,7 +123,7 @@ If not free, you should set the following environment variables:
 	if lnH3 != nil {
 		p := lnH3.LocalAddr().(*net.UDPAddr).Port
 		h.AltSvc = fmt.Sprintf(`h3=":%d"`, p)
-		fmt.Println(h.AltSvc)
+		th.AltSvc = h.AltSvc
 
 		h3 := http3.Server{Handler: mux, TLSConfig: tlsCfg}
 		go h3.Serve(lnH3)
