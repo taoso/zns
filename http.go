@@ -56,7 +56,11 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if e := m.IsEdns0(); e != nil {
 		for _, o := range e.Option {
 			if o.Option() == dns.EDNS0SUBNET {
-				hasSubnet = true
+				a := o.(*dns.EDNS0_SUBNET).Address[:2]
+				// skip empty subnet like 0.0.0.0/0
+				if !bytes.HasPrefix(a, []byte{0, 0}) {
+					hasSubnet = true
+				}
 				break
 			}
 		}
@@ -83,7 +87,7 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		p := netip.PrefixFrom(addr, bits)
 		ecs.Address = net.IP(p.Masked().Addr().AsSlice())
 		opt.Option = append(opt.Option, ecs)
-		m.Extra = append(m.Extra, opt)
+		m.Extra = []dns.RR{opt}
 	}
 
 	if question, err = m.Pack(); err != nil {
@@ -109,5 +113,6 @@ func (h Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Add("content-type", "application/dns-message")
 	w.Write(answer)
 }
