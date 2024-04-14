@@ -121,9 +121,31 @@ func (r sqliteTicketReop) New(token string, bytes int, trade, order string) erro
 }
 
 func (r sqliteTicketReop) Cost(token string, bytes int) error {
+	now := time.Now()
+
+	sql := "update " + (*Ticket).TableName(nil) +
+		" set bytes = bytes - ? where id in (select id from " + (*Ticket).TableName(nil) +
+		" where token = ? and expires > ? order by id asc limit 1) and bytes >= ?"
+
+	_r, err := r.db.Exec(sql, bytes, token, now, bytes)
+	if err != nil {
+		return err
+	}
+	n, err := _r.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 1 {
+		return nil
+	}
+
+	return r.costSlow(token, bytes)
+}
+
+func (r sqliteTicketReop) costSlow(token string, bytes int) error {
 	sql := "select * from " + (*Ticket).TableName(nil) +
 		" where token = ? and bytes > 0 and expires > ?" +
-		" order by expires asc"
+		" order by id asc"
 	var ts []Ticket
 	if err := r.db.Select(&ts, sql, token, time.Now()); err != nil {
 		return err
@@ -172,7 +194,7 @@ func (r sqliteTicketReop) Cost(token string, bytes int) error {
 
 func (r sqliteTicketReop) List(token string, limit int) (tickets []Ticket, err error) {
 	sql := "select * from " + (*Ticket).TableName(nil) +
-		" where token = ? order by expires desc limit ?"
+		" where token = ? order by id desc limit ?"
 	err = r.db.Select(&tickets, sql, token, limit)
 	return
 }

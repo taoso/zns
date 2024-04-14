@@ -73,3 +73,22 @@ func TestRepo(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, -15, ts[0].Bytes)
 }
+
+func TestRepoSlow(t *testing.T) {
+	r := NewTicketRepo(":memory:")
+
+	err := r.New("foo", 10, "buy-1", "pay-1")
+	assert.Nil(t, err)
+
+	err = r.New("foo", 30, "buy-2", "pay-2")
+	assert.Nil(t, err)
+
+	err = r.Cost("foo", 20)
+	assert.Nil(t, err)
+
+	ts, err := r.List("foo", 3)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(ts))
+	assert.Equal(t, 20, ts[0].Bytes)
+	assert.Equal(t, 0, ts[1].Bytes)
+}
