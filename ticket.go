@@ -12,7 +12,6 @@ import (
 
 	"github.com/go-kiss/sqlx"
 	"modernc.org/sqlite"
-	_ "modernc.org/sqlite"
 )
 
 type Ticket struct {
@@ -56,10 +55,11 @@ type TicketRepo interface {
 }
 
 func NewTicketRepo(path string) TicketRepo {
-	db, err := sqlx.Connect("sqlite", path+"?cache=shared&mode=rwc&_journal_mode=WAL")
+	db, err := sqlx.Connect("sqlite", path)
 	if err != nil {
 		panic(err)
 	}
+	db.SetMaxOpenConns(1)
 	r := sqliteTicketReop{db: db}
 	r.Init()
 	return r
