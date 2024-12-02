@@ -3,6 +3,10 @@ const token = urlParams.get('token');
 
 $ = document.querySelector.bind(document);
 
+if (document.location.hostname == 'zns.nu.mk') {
+  document.location.hostname = 'zns.lehu.in';
+}
+
 $('#pay').onclick = (e) => {
   const y = $('#cents');
   const cents = Math.trunc(y.value * 10);
