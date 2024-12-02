@@ -118,7 +118,11 @@ If not free, you should set the following environment variables:
 	mux.Handle("/dns/{token}", h)
 	mux.Handle("/ticket/", th)
 	mux.Handle("/ticket/{token}", th)
-	mux.Handle("/", http.FileServer(http.Dir(root)))
+	if root != "" {
+		mux.Handle("/", http.FileServer(http.Dir(root)))
+	} else {
+		mux.Handle("/", http.FileServerFS(zns.Static))
+	}
 
 	if lnH3 != nil {
 		p := lnH3.LocalAddr().(*net.UDPAddr).Port
