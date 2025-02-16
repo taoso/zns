@@ -22,10 +22,9 @@ func TestRepo(t *testing.T) {
 	assert.Equal(t, "pay-1", ts[0].PayOrder)
 
 	n := time.Now()
-	exp := n.AddDate(0, 1, -n.Day()+1)
-	year, month, day := exp.Date()
-	exp = time.Date(year, month, day, 0, 0, 0, 0, exp.Location())
-	assert.Equal(t, exp, ts[0].Expires)
+
+	assert.True(t, ts[0].Expires.Before(n.Add(30*24*time.Hour)))
+	assert.True(t, ts[0].Expires.After(n.Add(29*24*time.Hour)))
 	assert.Equal(t, ts[0].Created, ts[0].Updated)
 	assert.Equal(t, n.Truncate(time.Second), ts[0].Created.Truncate(time.Second))
 
@@ -39,6 +38,11 @@ func TestRepo(t *testing.T) {
 
 	err = r.New("foo", 30, "buy-2", "pay-2")
 	assert.Nil(t, err)
+
+	ts, err = r.List("foo", 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 2, len(ts))
+	assert.True(t, ts[0].Expires.Equal(ts[1].Expires.Add(30*24*time.Hour)))
 
 	err = r.New("foo", 40, "buy-3", "pay-3")
 	assert.Nil(t, err)

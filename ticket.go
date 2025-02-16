@@ -89,14 +89,13 @@ func (r sqliteTicketReop) Init() {
 	}
 }
 
-func expires(t time.Time) time.Time {
-	t = t.AddDate(0, 1, -t.Day()+1)
-	year, month, day := t.Date()
-	return time.Date(year, month, day, 0, 0, 0, 0, t.Location())
-}
-
 func (r sqliteTicketReop) New(token string, bytes int, trade, order string) error {
 	now := time.Now()
+
+	ts, err := r.List(token, 1)
+	if err != nil {
+		return err
+	}
 
 	t := Ticket{
 		Token:      token,
@@ -106,10 +105,16 @@ func (r sqliteTicketReop) New(token string, bytes int, trade, order string) erro
 		BuyOrder:   trade,
 		Created:    now,
 		Updated:    now,
-		Expires:    expires(now),
 	}
 
-	_, err := r.db.Insert(&t)
+	d := 30 * 24 * time.Hour
+	if len(ts) == 1 && ts[0].Expires.After(now) {
+		t.Expires = ts[0].Expires.Add(d)
+	} else {
+		t.Expires = now.Add(d)
+	}
+
+	_, err = r.db.Insert(&t)
 
 	se := &sqlite.Error{}
 	// constraint failed: UNIQUE constraint failed
