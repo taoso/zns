@@ -9,9 +9,9 @@ if (document.location.hostname == 'zns.nu.mk') {
 
 $('#pay').onclick = (e) => {
   const y = $('#cents');
-  const cents = Math.trunc(y.value * 10);
-  if (cents < 10) {
-    alert('最低一毛钱起购');
+  const cents = Math.trunc(y.value * 100);
+  if (cents < 100) {
+    alert('最低一元钱起购');
     y.focus();
     return;
   }

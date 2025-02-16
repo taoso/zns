@@ -240,8 +240,8 @@ func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		if req.Cents < 10 {
-			http.Error(w, "cents must > 10", http.StatusBadRequest)
+		if req.Cents < 100 {
+			http.Error(w, "cents must > 100", http.StatusBadRequest)
 			return
 		}
 
