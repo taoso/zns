@@ -1,6 +1,7 @@
 package zns
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 
@@ -36,7 +37,7 @@ type aliPay struct {
 }
 
 func (p aliPay) NewQR(order Order, notifyURL string) (string, error) {
-	r, err := p.ali.TradePreCreate(alipay.TradePreCreate{
+	r, err := p.ali.TradePreCreate(context.TODO(), alipay.TradePreCreate{
 		Trade: alipay.Trade{
 			NotifyURL:      notifyURL,
 			Subject:        "ZNS Ticket",
