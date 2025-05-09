@@ -107,7 +107,11 @@ func (r sqliteTicketReop) New(token string, bytes int, trade, order string) erro
 		Updated:    now,
 	}
 
-	d := 30 * 24 * time.Hour
+	gb := bytes / 1024 / 1024 / 1024
+	if gb == 0 {
+		gb = 1
+	}
+	d := 30 * 24 * time.Hour * time.Duration(gb)
 	if len(ts) == 1 && ts[0].Expires.After(now) {
 		t.Expires = ts[0].Expires.Add(d)
 	} else {

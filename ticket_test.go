@@ -76,6 +76,14 @@ func TestRepo(t *testing.T) {
 	ts, err = r.List("foo", 1)
 	assert.Nil(t, err)
 	assert.Equal(t, -15, ts[0].Bytes)
+
+	err = r.New("foo", 3*1024*1024*1024, "buy-6", "pay-6")
+	assert.Nil(t, err)
+
+	ts, err = r.List("foo", 2)
+	assert.Nil(t, err)
+	assert.Equal(t, 3*1024*1024*1024, ts[0].Bytes)
+	assert.True(t, ts[0].Expires.Equal(ts[1].Expires.Add(3*30*24*time.Hour)))
 }
 
 func TestRepoSlow(t *testing.T) {
