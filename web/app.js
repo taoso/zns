@@ -75,12 +75,22 @@ fetch(`/ticket/${token}`).then((resp) => {
     t.style.display = 'table';
 
     $('#qr-msg').innerHTML = `你的专属 DoH 链接🔗 <span class="warn">(请勿在互联网上传播!)</span><div class="doh-url">https://${document.domain}/dns/${token}</div><div class="help">有问题请联系 <a href="mailto:hi@lehu.in">hi@lehu.in</a></div>`;
+    let keyName = {
+      "id":          "记录编号",
+      "bytes":       "剩余流量",
+      "total_bytes": "已购流量",
+      "pay_order":   "支付订单",
+      "buy_order":   "业务订单",
+      "created":     "创建时间",
+      "updated":     "更新时间",
+      "expires":     "过期时间",
+    };
     tickets.forEach((ticket) => {
       let isTime = ["created", "updated", "expires"];
       for ([key, value] of Object.entries(ticket)) {
         let tr = _('tr');
         let th = _('th');
-        th.innerText = key;
+        th.innerText = keyName[key] || key;
         let td = _('td');
         if (isTime.includes(key)) {
           value = new Date(Date.parse(value));
@@ -91,6 +101,9 @@ fetch(`/ticket/${token}`).then((resp) => {
         tr.appendChild(td);
         t.appendChild(tr);
       }
+      let tr = _('tr');
+      tr.appendChild(_('hr'));
+      t.appendChild(tr);
     });
   });
 });
