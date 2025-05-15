@@ -41,6 +41,10 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	var question []byte
 	if r.Method == http.MethodGet {
 		q := r.URL.Query().Get("dns")
+		if q == "" {
+			http.Redirect(w, r, "/?token="+token, http.StatusFound)
+			return
+		}
 		question, err = base64.RawURLEncoding.DecodeString(q)
 	} else {
 		question, err = io.ReadAll(r.Body)
