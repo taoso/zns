@@ -17,3 +17,15 @@
 #qr-msg {
   margin: 1em 0;
 }
+
+.doh-url {
+  font-weight: bold;
+  font-family: monospace;
+  color: blue;
+  margin: 0.5em 0;
+  font-size: 1.5em;
+}
+
+span.warn {
+  color: red;
+}
