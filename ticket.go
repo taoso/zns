@@ -2,6 +2,7 @@ package zns
 
 import (
 	"crypto/rand"
+	"database/sql"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -152,12 +153,16 @@ func (r sqliteTicketReop) Cost(token string, bytes int) error {
 }
 
 func (r sqliteTicketReop) costSlow(token string, bytes int) error {
-	sql := "select * from " + (*Ticket).TableName(nil) +
+	q := "select * from " + (*Ticket).TableName(nil) +
 		" where token = ? and bytes > 0 and expires > ?" +
 		" order by id asc"
 	var ts []Ticket
-	if err := r.db.Select(&ts, sql, token, time.Now()); err != nil {
+	if err := r.db.Select(&ts, q, token, time.Now()); err != nil {
 		return err
+	}
+
+	if len(ts) == 0 {
+		return sql.ErrNoRows
 	}
 
 	var i int
