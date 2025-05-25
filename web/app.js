@@ -74,7 +74,7 @@ fetch(`/ticket/${token}`).then((resp) => {
     t = $('#tickets');
     t.style.display = 'table';
 
-    $('#qr-msg').innerHTML = `你的专属 DoH 链接🔗 <span class="warn">(请勿在互联网上传播!)</span><div class="doh-url">https://${document.domain}/dns/${token}</div><div class="help">有问题请联系 <a href="mailto:hi@lehu.in">hi@lehu.in</a></div>`;
+    $('#qr-msg').innerHTML = `你的专属 DoH 链接🔗 <span class="warn">(请勿在互联网上传播!)</span><div class="doh-url">https://${document.domain}/dns/${token}</div><div class="help">有问题请加电报群 <a href="https://t.me/letszns">https://t.me/letszns</a></div>`;
     let keyName = {
       "id":          "记录编号",
       "bytes":       "剩余流量",
