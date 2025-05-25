@@ -111,14 +111,14 @@ If not free, you should set the following environment variables:
 		)
 	}
 
-	h := &zns.Handler{Upstream: upstream, Repo: repo}
+	h := &zns.Handler{Upstream: upstream, Repo: repo, Root: http.Dir(root)}
 	th := &zns.TicketHandler{MBpCNY: price, Pay: pay, Repo: repo}
 
 	mux := http.NewServeMux()
 	mux.Handle("/dns/{token}", h)
 	mux.Handle("/ticket/", th)
 	mux.Handle("/ticket/{token}", th)
-	mux.Handle("/", http.FileServer(http.Dir(root)))
+	mux.Handle("/", http.FileServer(h.Root))
 
 	if lnH3 != nil {
 		p := lnH3.LocalAddr().(*net.UDPAddr).Port

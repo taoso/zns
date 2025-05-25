@@ -15,6 +15,7 @@ type Handler struct {
 	Upstream string
 	Repo     TicketRepo
 	AltSvc   string
+	Root     http.Dir
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -42,7 +43,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		q := r.URL.Query().Get("dns")
 		if q == "" {
-			http.Redirect(w, r, "/?token="+token, http.StatusFound)
+			f, err := h.Root.Open("/index.html")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			io.Copy(w, f)
 			return
 		}
 		question, err = base64.RawURLEncoding.DecodeString(q)

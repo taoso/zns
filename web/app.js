@@ -1,11 +1,15 @@
+(() => {
 const urlParams = new URLSearchParams(location.search);
-const token = urlParams.get('token');
+let token = urlParams.get('token');
+if (token) {
+  document.location.href = '//' + document.domain + '/dns/' + token
+  return
+}
+
+let m = document.location.pathname.match(/^\/dns\/(.+)$/)
+token = (m && m[1]) || ""
 
 $ = document.querySelector.bind(document);
-
-if (document.location.hostname == 'zns.nu.mk') {
-  document.location.hostname = 'zns.lehu.in';
-}
 
 $('#pay').onclick = (e) => {
   const y = $('#cents');
@@ -56,7 +60,7 @@ $('#pay').onclick = (e) => {
               resp.json().then((tickets) => {
                 if (!tickets) return;
                 if (tickets[0].buy_order != d.order) return;
-                document.location = `/?token=${d.token}`
+                document.location = `/dns/${d.token}`
               });
             }).finally(() => {
                 orderLoading = false;
@@ -107,3 +111,4 @@ fetch(`/ticket/${token}`).then((resp) => {
     });
   });
 });
+})()
