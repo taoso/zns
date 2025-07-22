@@ -120,6 +120,14 @@ If not free, you should set the following environment variables:
 	mux.Handle("/ticket/{token}", th)
 	mux.Handle("/", http.FileServer(h.Root))
 
+	x := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodConnect {
+			h.ServeHTTP(w, r)
+			return
+		}
+		mux.ServeHTTP(w, r)
+	})
+
 	if lnH3 != nil {
 		p := lnH3.LocalAddr().(*net.UDPAddr).Port
 		h.AltSvc = fmt.Sprintf(`h3=":%d"`, p)
@@ -130,7 +138,7 @@ If not free, you should set the following environment variables:
 	}
 
 	lnTLS := tls.NewListener(lnH12, tlsCfg)
-	if err = http.Serve(lnTLS, mux); err != nil {
+	if err = http.Serve(lnTLS, x); err != nil {
 		log.Fatal(err)
 	}
 }
