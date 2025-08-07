@@ -134,10 +134,11 @@ func (r sqliteTicketReop) Cost(token string, bytes int) error {
 	now := time.Now()
 
 	sql := "update " + (*Ticket).TableName(nil) +
-		" set bytes = bytes - ? where id in (select id from " + (*Ticket).TableName(nil) +
+		" set bytes = bytes - ?, updated = ? " +
+		" where id in (select id from " + (*Ticket).TableName(nil) +
 		" where token = ? and expires > ? order by id asc limit 1) and bytes >= ?"
 
-	_r, err := r.db.Exec(sql, bytes, token, now, bytes)
+	_r, err := r.db.Exec(sql, bytes, now, token, now, bytes)
 	if err != nil {
 		return err
 	}
