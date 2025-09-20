@@ -139,8 +139,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	costFold := 3 // 主服务正常时备用线路消耗三倍流量，只在必要时使用
+	remoteAddr := r.Header.Get("zns-real-addr")
+	if remoteAddr == "" {
+		remoteAddr = r.RemoteAddr
+		costFold = 1
+	}
+
 	if !hasSubnet {
-		ip, err := netip.ParseAddrPort(r.RemoteAddr)
+		ip, err := netip.ParseAddrPort(remoteAddr)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -181,7 +188,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = h.Repo.Cost(token, len(question)+len(answer)); err != nil {
+	if err = h.Repo.Cost(token, (len(question)+len(answer))*costFold); err != nil {
 		http.Error(w, err.Error(), http.StatusUnauthorized)
 		return
 	}
