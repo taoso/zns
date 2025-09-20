@@ -59,7 +59,15 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	token := r.PathValue("token")
+	var token string
+	if r.URL.Path == "/dns-query" {
+		// https://${token}.zns.lehu.in/dns-query
+		x := strings.SplitN(r.Host, ".", 2)
+		token = x[0]
+	} else {
+		token = r.PathValue("token")
+	}
+
 	if token == "" {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return

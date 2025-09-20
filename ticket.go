@@ -263,6 +263,10 @@ func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				return
 			}
 			req.Token = base64.RawURLEncoding.EncodeToString(b)
+			// 兼容 token 在域名中的情形
+			req.Token = strings.ToLower(req.Token)
+			req.Token = strings.ReplaceAll(req.Token, "-", "z")
+			req.Token = strings.ReplaceAll(req.Token, "_", "z")
 		}
 
 		now := time.Now().Format(time.RFC3339)

@@ -10,6 +10,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/quic-go/quic-go/http3"
 	"github.com/taoso/zns"
@@ -56,6 +57,53 @@ func listen() (lnH12 net.Listener, lnH3 net.PacketConn, err error) {
 	return
 }
 
+type certLoader struct {
+	certFile, keyFile string
+
+	lastMod time.Time
+
+	t *time.Ticker
+
+	cert *tls.Certificate
+}
+
+func (l *certLoader) Load() {
+	info, err := os.Stat(l.certFile)
+	if err != nil {
+		panic(err)
+	}
+	lastMod := info.ModTime()
+	if !lastMod.After(l.lastMod) {
+		return
+	}
+	cert, err := tls.LoadX509KeyPair(l.certFile, l.keyFile)
+	if err != nil {
+		panic(err)
+	}
+	l.cert = &cert
+	l.lastMod = lastMod
+}
+
+func (l *certLoader) Stop() {
+	l.t.Stop()
+}
+
+func (l *certLoader) Start() {
+	l.Load()
+	go l.Loop()
+}
+
+func (l *certLoader) Loop() {
+	l.t = time.NewTicker(1 * time.Minute)
+	for range l.t.C {
+		l.Load()
+	}
+}
+
+func (l *certLoader) GetCertificate(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+	return l.cert, nil
+}
+
 func main() {
 	flag.StringVar(&tlsCert, "tls-cert", "", "File path of TLS certificate")
 	flag.StringVar(&tlsKey, "tls-key", "", "File path of TLS key")
@@ -86,11 +134,10 @@ If not free, you should set the following environment variables:
 		tlsCfg = acm.TLSConfig()
 	} else {
 		tlsCfg = &tls.Config{}
-		certs, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
-		if err != nil {
-			panic(err)
-		}
-		tlsCfg.Certificates = []tls.Certificate{certs}
+		l := certLoader{certFile: tlsCert, keyFile: tlsKey}
+		l.Start()
+		defer l.Stop()
+		tlsCfg.GetCertificate = l.GetCertificate
 	}
 
 	lnH12, lnH3, err := listen()
@@ -115,6 +162,7 @@ If not free, you should set the following environment variables:
 	th := &zns.TicketHandler{MBpCNY: price, Pay: pay, Repo: repo}
 
 	mux := http.NewServeMux()
+	mux.Handle("/dns-query", h)
 	mux.Handle("/dns/{token}", h)
 	mux.Handle("/ticket/", th)
 	mux.Handle("/ticket/{token}", th)
