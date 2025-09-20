@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/netip"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -100,6 +101,28 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := m.Unpack(question); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+
+	if len(m.Question) == 0 {
+		http.Error(w, "question is empty", http.StatusBadRequest)
+		return
+	}
+
+	if r.URL.Query().Get("noad") != "" {
+		n := m.Question[0].Name
+		n = strings.TrimRight(n, ".")
+		if isBlackDomain(n) {
+			non := new(dns.Msg)
+			non.SetReply(&m)
+			non.Rcode = dns.RcodeNameError
+			answer, err := non.Pack()
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Add("content-type", "application/dns-message")
+			w.Write(answer)
+		}
 	}
 
 	var hasSubnet bool

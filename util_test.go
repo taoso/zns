@@ -36,3 +36,10 @@ func TestBytesCounter(t *testing.T) {
 	assert.Equal(t, 12, i)
 	assert.Equal(t, "abcdef", s)
 }
+
+func TestTrie(t *testing.T) {
+	v := isBlackDomain("zeus.ad.xiaomi.com")
+	assert.True(t, v)
+	v = isBlackDomain("zeus.xiaomi.com")
+	assert.False(t, v)
+}
