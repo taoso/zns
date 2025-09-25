@@ -78,10 +78,12 @@ fetch(`/ticket/${token}`).then((resp) => {
     t = $('#tickets');
     t.style.display = 'table';
 
-    $('#qr-msg').innerHTML = `你的专属 DoH 链接🔗 <span class="warn">(请勿在互联网上传播!)</span>
+    $('#qr-msg').innerHTML = `DoH 主线 <span class="warn">(请勿在互联网上传播!)</span>
     <div class="doh-url">https://${document.domain}/dns/${token}</div>
-    <span>备用线路</span><span class="warn">(支持IPv6，延迟较大，主线异常不计流量，主线正常计三倍流量)</span>
+    <span>DoH 备线 </span><span class="warn">(支持IPv6，延迟较大，主线异常不计流量，主线正常计三倍流量)</span>
     <div class="doh-url">https://us.${document.domain}/dns/${token}</div>
+    <span>DoT 域名 </span><span class="warn">(仅限安卓🤦‍♂️不推荐)</span>
+    <div class="doh-url">${token}.${document.domain}</div>
     <div class="help">加电报群 <a href="https://t.me/letszns">t.me/letszns</a> 获取神秘信息🤫</div>`;
     let keyName = {
       "id":          "记录编号",
@@ -109,9 +111,9 @@ fetch(`/ticket/${token}`).then((resp) => {
         tr.appendChild(td);
         t.appendChild(tr);
       }
-      let tr = _('tr');
-      tr.appendChild(_('hr'));
-      t.appendChild(tr);
+      // let tr = _('tr');
+      // tr.appendChild(_('hr'));
+      // t.appendChild(tr);
     });
   });
 });

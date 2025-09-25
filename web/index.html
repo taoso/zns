@@ -11,27 +11,32 @@
     <meta name="description" content="ZNS">
     <meta name="referrer" content="same-origin">
     <link rel="icon" href="/zns.svg">
+    <link rel="stylesheet" href="/water.css">
     <link rel="stylesheet" href="/style.css">
   </head>
   <body>
     <h1>ZNS</h1>
+    <p>可能是最简单的 DNS over HTTPS (DoH) 服务了。</p>
+    <h2>服务特色</h2>
     <dl>
       <dt>🔒保护隐私</dt>
       <dd>仅保存订单号、余额等必要信息，不记录 DNS 查询行为。</dd>
       <dt>🌐智能解析</dt>
-      <dd>基于 DoH + EDNS Client Subnet (ECS) 技术，海外域名无污染，国内域名无延迟。支持 DNS over HTTP/3 (DoH3) 协议！</dd>
+      <dd>基于 EDNS Client Subnet (ECS) 技术获取最近解析结果。</dd>
+      <dt>⚙️通信协议</dt>
+      <dd>支持 DNS over HTTP/3 (DoH3) 协议和 DNS over TLS (DoT) 协议。</dd>
       <dt>👨‍💻开源社区</dt>
       <dd>代码全部<a href="https://github.com/taoso/zns">开源</a>，MIT 授权协议，自由使用。</dd>
       <dt>💰按量付费</dt>
       <dd>一元 1GB 流量，30天有效；两元 2G 流量，60 天有效；以此类推。连续充值过期时间顺延。</dd>
     </dl>
+    <h2>立即体验</h2>
     <input id="cents" type="number" placeholder="金额(元)" min="1">
     <button id="pay">支付宝付款</button>
     <div id="qr-msg"></div>
     <div id="qr"></div>
-    <table id="tickets" style="display:none;">
-      <caption>最近购买记录</caption>
-    </table>
+    <h2>最近购买记录</h2>
+    <table><tbody id="tickets" style="display:none;width:100%;"></body></table>
   </body>
   <script src="/qrcode.js"></script>
   <script src="/app.js"></script>
