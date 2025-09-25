@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -20,39 +19,28 @@ import (
 var tlsCert string
 var tlsKey string
 var tlsHosts string
-var h12, h3 string
+var h12, h3, dot string
 var upstream string
 var dbPath string
 var price int
 var free bool
 var root string
 
-func listen() (lnH12 net.Listener, lnH3 net.PacketConn, err error) {
-	if os.Getenv("LISTEN_PID") == strconv.Itoa(os.Getpid()) {
-		if os.Getenv("LISTEN_FDS") != "2" {
-			panic("LISTEN_FDS should be 2")
+func listen() (lnH12, lnDot net.Listener, lnH3 net.PacketConn, err error) {
+	if h12 != "" {
+		lnH12, err = net.Listen("tcp", h12)
+		if err != nil {
+			return
 		}
-		names := strings.Split(os.Getenv("LISTEN_FDNAMES"), ":")
-		for i, name := range names {
-			switch name {
-			case "h12":
-				f := os.NewFile(uintptr(i+3), "https port")
-				lnH12, err = net.FileListener(f)
-			case "h3":
-				f := os.NewFile(uintptr(i+3), "quic port")
-				lnH3, err = net.FilePacketConn(f)
-			}
+	}
+	if dot != "" {
+		lnDot, err = net.Listen("tcp", dot)
+		if err != nil {
+			return
 		}
-	} else {
-		if h12 != "" {
-			lnH12, err = net.Listen("tcp", h12)
-			if err != nil {
-				return
-			}
-		}
-		if h3 != "" {
-			lnH3, err = net.ListenPacket("udp", h3)
-		}
+	}
+	if h3 != "" {
+		lnH3, err = net.ListenPacket("udp", h3)
 	}
 	return
 }
@@ -110,6 +98,7 @@ func main() {
 	flag.StringVar(&tlsHosts, "tls-hosts", "", "Host name for ACME")
 	flag.StringVar(&h12, "h12", ":443", "Listen address for http1 and h2")
 	flag.StringVar(&h3, "h3", ":443", "Listen address for h3")
+	flag.StringVar(&dot, "dot", ":853", "Listen address for DoT")
 	flag.StringVar(&upstream, "upstream", "https://doh.pub/dns-query", "DoH upstream URL")
 	flag.StringVar(&dbPath, "db", "", "File path of Sqlite database")
 	flag.StringVar(&root, "root", ".", "Root path of static files")
@@ -140,7 +129,7 @@ If not free, you should set the following environment variables:
 		tlsCfg.GetCertificate = l.GetCertificate
 	}
 
-	lnH12, lnH3, err := listen()
+	lnH12, lnDot, lnH3, err := listen()
 	if err != nil {
 		panic(err)
 	}
@@ -183,6 +172,20 @@ If not free, you should set the following environment variables:
 
 		h3 := http3.Server{Handler: mux, TLSConfig: tlsCfg}
 		go h3.Serve(lnH3)
+	}
+
+	if lnDot != nil {
+		ln := tls.NewListener(lnDot, tlsCfg)
+		go func() {
+			for {
+				c, err := ln.Accept()
+				if err != nil {
+					log.Println("Failed to accept dot connection", err)
+					continue
+				}
+				go h.ServeDoT(c.(*tls.Conn))
+			}
+		}()
 	}
 
 	lnTLS := tls.NewListener(lnH12, tlsCfg)
