@@ -135,6 +135,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	var hasSubnet bool
 	if e := m.IsEdns0(); e != nil {
+		var opts []dns.EDNS0
 		for _, o := range e.Option {
 			if o.Option() == dns.EDNS0SUBNET {
 				a := o.(*dns.EDNS0_SUBNET).Address[:2]
@@ -142,9 +143,13 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				if !bytes.HasPrefix(a, []byte{0, 0}) {
 					hasSubnet = true
 				}
-				break
+			} else if o.Option() != dns.EDNS0PADDING {
+				opts = append(opts, o)
 			}
 		}
+		e.Option = opts
+	} else {
+		m.SetEdns0(dns.DefaultMsgSize, false) // TODO(tao) DNSSEC
 	}
 
 	costFold := 3 // 主服务正常时备用线路消耗三倍流量，只在必要时使用
@@ -161,7 +166,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		addr := ip.Addr()
-		opt := &dns.OPT{Hdr: dns.RR_Header{Name: ".", Rrtype: dns.TypeOPT}}
 		ecs := &dns.EDNS0_SUBNET{Code: dns.EDNS0SUBNET}
 		var bits int
 		if addr.Is4() {
@@ -174,8 +178,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ecs.SourceNetmask = uint8(bits)
 		p := netip.PrefixFrom(addr, bits)
 		ecs.Address = net.IP(p.Masked().Addr().AsSlice())
+		opt := m.IsEdns0()
 		opt.Option = append(opt.Option, ecs)
-		m.Extra = []dns.RR{opt}
 	}
 
 	if question, err = m.Pack(); err != nil {
