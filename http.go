@@ -116,6 +116,62 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if q := m.Question[0]; q.Qtype == dns.TypeSVCB && strings.HasPrefix(q.Name, "_dns.") {
+		server := strings.TrimPrefix(q.Name, "_dns.")
+		var dohServer, dotServer string
+		if strings.HasPrefix(r.URL.Path, "/dns/") {
+			dohServer = server
+			dotServer = token + "." + server
+		} else {
+			dohServer = strings.TrimPrefix(server, token+".")
+			dotServer = server
+		}
+
+		doh := &dns.SVCB{
+			Hdr: dns.RR_Header{
+				Name:   q.Name,
+				Rrtype: dns.TypeSVCB,
+				Class:  dns.ClassINET,
+				Ttl:    1,
+			},
+			Priority: 1,
+			Target:   dohServer,
+			Value: []dns.SVCBKeyValue{
+				&dns.SVCBAlpn{Alpn: []string{"h3", "h2"}},
+				&dns.SVCBDoHPath{Template: "/dns/" + token + "/{?dns}"},
+			},
+		}
+
+		dot := &dns.SVCB{
+			Hdr: dns.RR_Header{
+				Name:   q.Name,
+				Rrtype: dns.TypeSVCB,
+				Class:  dns.ClassINET,
+				Ttl:    1,
+			},
+			Priority: 2,
+			Target:   dotServer,
+			Value: []dns.SVCBKeyValue{
+				&dns.SVCBAlpn{Alpn: []string{"dot"}},
+			},
+		}
+
+		a := &dns.Msg{}
+		a.SetReply(&m)
+		a.Authoritative = true
+		a.Answer = []dns.RR{doh, dot}
+
+		buf, err := a.Pack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Add("content-type", "application/dns-message")
+		w.Write(buf)
+		return
+	}
+
 	if r.URL.Query().Get("noad") != "" {
 		n := m.Question[0].Name
 		n = strings.TrimRight(n, ".")
