@@ -1,14 +1,5 @@
-#tickets {
+#tickets tr.id {
   border-top: dashed 1px gray;
-}
-
-#tickets tr {
-  border-bottom: 1px solid gray;
-}
-
-#tickets th {
-  text-align: right;
-  font-weight: normal;
 }
 
 #qr {

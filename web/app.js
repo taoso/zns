@@ -102,6 +102,9 @@ fetch(`/ticket/${token}`).then((resp) => {
         let th = _('th');
         th.innerText = keyName[key] || key;
         let td = _('td');
+        if (key === 'id') {
+            tr.classList.add('id');
+        }
         if (isTime.includes(key)) {
           value = new Date(Date.parse(value));
           value = value.toLocaleString();
