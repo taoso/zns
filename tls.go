@@ -12,7 +12,6 @@ import (
 type tlsWriter struct {
 	code int
 	body []byte
-	conn *tls.Conn
 }
 
 func (w *tlsWriter) Header() http.Header        { return http.Header{} }
@@ -25,13 +24,10 @@ func (w *tlsWriter) Write(b []byte) (n int, err error) {
 func (p *Handler) ServeDoT(conn *tls.Conn) {
 	defer conn.Close()
 
-	conn.Handshake()
-
 	lenBuf := make([]byte, 2)
-	w := &tlsWriter{conn: conn}
+	w := &tlsWriter{}
 
 	conn.Handshake()
-
 	domain := conn.ConnectionState().ServerName
 
 	for {
@@ -47,7 +43,7 @@ func (p *Handler) ServeDoT(conn *tls.Conn) {
 		queryBuf := make([]byte, queryLen)
 		_, err = io.ReadFull(conn, queryBuf)
 		if err != nil {
-			log.Printf("reading query body error", err)
+			log.Print("reading query body error", err)
 			return
 		}
 
