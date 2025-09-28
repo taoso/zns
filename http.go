@@ -208,7 +208,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		m.SetEdns0(dns.DefaultMsgSize, false) // TODO(tao) DNSSEC
 	}
 
-	costFold := 3 // 主服务正常时备用线路消耗三倍流量，只在必要时使用
+	costFold := 100 // 主服务正常时备用线路消耗百倍流量，只在必要时使用
 	remoteAddr := r.Header.Get("zns-real-addr")
 	if remoteAddr == "" {
 		remoteAddr = r.RemoteAddr
