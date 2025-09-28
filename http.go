@@ -73,16 +73,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ts, err := h.Repo.List(token, 1)
-	if err != nil {
-		http.Error(w, "invalid token", http.StatusInternalServerError)
-		return
-	}
-	if len(ts) == 0 || ts[0].Bytes <= 0 {
-		http.Error(w, "invalid token", http.StatusUnauthorized)
-		return
-	}
-
+	var err error
 	var question []byte
 	if r.Method == http.MethodGet {
 		q := r.URL.Query().Get("dns")
@@ -102,6 +93,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	ts, err := h.Repo.List(token, 1)
+	if err != nil {
+		http.Error(w, "invalid token", http.StatusInternalServerError)
+		return
+	}
+	if len(ts) == 0 || ts[0].Bytes <= 0 {
+		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
 	}
 
