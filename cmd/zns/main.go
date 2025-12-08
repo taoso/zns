@@ -129,6 +129,8 @@ If not free, you should set the following environment variables:
 		tlsCfg.GetCertificate = l.GetCertificate
 	}
 
+	tlsCfg.NextProtos = append(tlsCfg.NextProtos, "h2", "http/1.1")
+
 	lnH12, lnDot, lnH3, err := listen()
 	if err != nil {
 		panic(err)
@@ -157,18 +159,23 @@ If not free, you should set the following environment variables:
 	mux.Handle("/ticket/{token}", th)
 	mux.Handle("/", http.FileServer(h.Root))
 
+	altSvc := ""
 	x := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodConnect {
 			h.ServeHTTP(w, r)
 			return
 		}
+
+		if altSvc != "" {
+			w.Header().Set("Alt-Svc", altSvc)
+		}
+
 		mux.ServeHTTP(w, r)
 	})
 
 	if lnH3 != nil {
 		p := lnH3.LocalAddr().(*net.UDPAddr).Port
-		h.AltSvc = fmt.Sprintf(`h3=":%d"`, p)
-		th.AltSvc = h.AltSvc
+		altSvc = fmt.Sprintf(`h3=":%d"`, p)
 
 		h3 := http3.Server{Handler: mux, TLSConfig: tlsCfg}
 		go h3.Serve(lnH3)
