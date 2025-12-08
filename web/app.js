@@ -78,6 +78,8 @@ fetch(`/ticket/${token}`).then((resp) => {
     t = $('#tickets');
     t.style.display = 'table';
 
+    $('#ticket-title').style.display = 'block';
+
     $('#qr-msg').innerHTML = `DoH 主线 <span class="warn">(请勿在互联网上传播!)</span>
     <div class="doh-url">https://${document.domain}/dns/${token}</div>
     <span>DoH 备线 </span><span class="warn">(需在主线异常时使用⚠️主线异常不计流量，主线正常计百倍流量)</span>

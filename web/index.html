@@ -33,9 +33,14 @@
     <h2>立即体验</h2>
     <input id="cents" type="number" placeholder="金额(元)" min="1">
     <button id="pay">支付宝付款</button>
+    <img src="/alipay.png" style="
+      display: inline-block;
+      width: 2em;
+      vertical-align: middle;
+      ">
     <div id="qr-msg"></div>
     <div id="qr"></div>
-    <h2>购买记录</h2>
+    <h2 id="ticket-title" style="display:none;">购买记录</h2>
     <table><tbody id="tickets" style="display:none;width:100%;"></body></table>
   </body>
   <script src="/qrcode.js"></script>
