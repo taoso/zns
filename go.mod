@@ -3,7 +3,6 @@ module github.com/taoso/zns
 go 1.25
 
 require (
-	github.com/dghubble/trie v0.1.0
 	github.com/felixge/httpsnoop v1.0.4
 	github.com/go-kiss/sqlx v0.0.0-20250514141631-7be2cb31cba2
 	github.com/miekg/dns v1.1.68
