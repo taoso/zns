@@ -166,7 +166,7 @@ If not free, you should set the following environment variables:
 			return
 		}
 
-		if altSvc != "" {
+		if r.ProtoMajor < 3 && altSvc != "" {
 			w.Header().Set("Alt-Svc", altSvc)
 		}
 

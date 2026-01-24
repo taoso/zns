@@ -222,10 +222,6 @@ type TicketHandler struct {
 }
 
 func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.AltSvc != "" {
-		w.Header().Set("Alt-Svc", h.AltSvc)
-	}
-
 	if r.Method == http.MethodGet {
 		token := r.PathValue("token")
 		ts, err := h.Repo.List(token, 10)

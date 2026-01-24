@@ -28,10 +28,6 @@ type Handler struct {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if h.AltSvc != "" {
-		w.Header().Set("Alt-Svc", h.AltSvc)
-	}
-
 	if r.Method == http.MethodConnect {
 		auth := r.Header.Get("Proxy-Authorization")
 		if auth == "" {
