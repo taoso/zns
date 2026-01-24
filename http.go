@@ -2,22 +2,15 @@ package zns
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"io"
-	"log"
 	"net"
 	"net/http"
 	"net/netip"
-	"net/url"
 	"strings"
-	"sync"
 	"time"
 
-	"github.com/felixge/httpsnoop"
 	"github.com/miekg/dns"
-	"github.com/quic-go/quic-go/http3"
-	"github.com/quic-go/quic-go/quicvarint"
 )
 
 type Handler struct {
@@ -28,33 +21,6 @@ type Handler struct {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if r.Method == http.MethodConnect {
-		auth := r.Header.Get("Proxy-Authorization")
-		if auth == "" {
-			w.Header().Set("Proxy-Authenticate", `Basic realm="Word Wide Web"`)
-			w.WriteHeader(http.StatusProxyAuthRequired)
-			return
-		}
-		username, _, _ := parseBasicAuth(auth)
-		ts, err := h.Repo.List(username, 1)
-		if err != nil {
-			http.Error(w, "invalid token", http.StatusInternalServerError)
-			return
-		}
-		if len(ts) == 0 || ts[0].Bytes <= 0 {
-			w.Header().Set("Proxy-Authenticate", `Basic realm="Word Wide Web"`)
-			w.WriteHeader(http.StatusProxyAuthRequired)
-			return
-		}
-		r.URL.User = url.User(username)
-		if r.Proto == "connect-udp" {
-			h.proxyUDP(w, r)
-		} else {
-			h.proxyHTTPS(w, r)
-		}
-		return
-	}
-
 	var token string
 	if r.URL.Path == "/dns-query" {
 		// https://${token}.zns.lehu.in/dns-query
@@ -97,7 +63,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid token", http.StatusInternalServerError)
 		return
 	}
-	if len(ts) == 0 || ts[0].Bytes <= 0 {
+	if len(ts) == 0 || ts[0].Expires.Before(time.Now()) {
 		http.Error(w, "invalid token", http.StatusUnauthorized)
 		return
 	}
@@ -188,15 +154,8 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		m.SetEdns0(dns.DefaultMsgSize, false) // TODO(tao) DNSSEC
 	}
 
-	costFold := 100 // 主服务正常时备用线路消耗百倍流量，只在必要时使用
-	remoteAddr := r.Header.Get("zns-real-addr")
-	if remoteAddr == "" {
-		remoteAddr = r.RemoteAddr
-		costFold = 1
-	}
-
 	if !hasSubnet {
-		ip, err := netip.ParseAddrPort(remoteAddr)
+		ip, err := netip.ParseAddrPort(r.RemoteAddr)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
@@ -230,163 +189,6 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer resp.Body.Close()
 
-	answer, err := io.ReadAll(resp.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	if err = h.Repo.Cost(token, (len(question)+len(answer))*costFold); err != nil {
-		http.Error(w, err.Error(), http.StatusUnauthorized)
-		return
-	}
-
 	w.Header().Add("content-type", "application/dns-message")
-	w.Write(answer)
-}
-
-func (p *Handler) proxyUDP(w http.ResponseWriter, req *http.Request) {
-	addr, err := parseMasqueTarget(req.URL)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("invalid target"))
-		log.Println("invalid target", req.URL)
-		return
-	}
-
-	log.Println("target:", req.URL)
-
-	up, err := net.Dial("udp", addr)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte("dial udp err: " + err.Error()))
-		log.Println("dial udp err", err)
-		return
-	}
-	defer up.Close()
-
-	w.Header().Add("capsule-protocol", "?1")
-	w.WriteHeader(http.StatusOK)
-	w.(http.Flusher).Flush()
-
-	w = w.(httpsnoop.Unwrapper).Unwrap()
-	str := w.(http3.HTTPStreamer).HTTPStream()
-	defer str.Close()
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	user := req.URL.User.Username()
-
-	cost := func(n int) {
-		n *= 2
-		err := p.Repo.Cost(user, n)
-		if err != nil {
-			log.Println("ticket cost error: ", user, n, err)
-			str.Close()
-			up.Close()
-		}
-	}
-	u := &bytesCounter{w: up, d: 1 * time.Second, f: cost}
-
-	go u.Start()
-	defer u.Done()
-
-	go func() {
-		defer wg.Done()
-		b := make([]byte, 1500)
-		for {
-			n, err := u.Read(b[1:])
-			if err != nil {
-				log.Println("up.Read err:", err)
-				return
-			}
-			err = str.SendDatagram(b[:n+1])
-			if err != nil {
-				log.Println("SendDatagram err:", err)
-				return
-			}
-		}
-	}()
-
-	go func() {
-		defer wg.Done()
-		ctx := context.Background()
-		for {
-			b, err := str.ReceiveDatagram(ctx)
-			if err != nil {
-				log.Println("ReceiveDatagram err:", err)
-				return
-			}
-			_, n, err := quicvarint.Parse(b)
-			if err != nil {
-				log.Println("parse cid err:", err)
-				return
-			}
-			_, err = u.Write(b[n:])
-			if err != nil {
-				log.Println("up.Write err:", err)
-				return
-			}
-		}
-	}()
-
-	wg.Wait()
-}
-
-func (p *Handler) proxyHTTPS(w http.ResponseWriter, req *http.Request) {
-	address := req.RequestURI
-	upConn, err := net.DialTimeout("tcp", address, 5*time.Second)
-	if err != nil {
-		w.WriteHeader(http.StatusBadGateway)
-		return
-	}
-	defer upConn.Close()
-
-	w.WriteHeader(http.StatusOK)
-	w.(http.Flusher).Flush()
-
-	var downConn io.ReadWriteCloser
-	if req.ProtoMajor >= 2 {
-		downConn = flushWriter{w: w, r: req.Body}
-	} else {
-		downConn, _, err = w.(http.Hijacker).Hijack()
-		if err != nil {
-			w.WriteHeader(http.StatusInternalServerError)
-			w.Write([]byte("hijack err: " + err.Error()))
-			return
-		}
-		defer downConn.Close()
-	}
-
-	var wg sync.WaitGroup
-	wg.Add(2)
-
-	user := req.URL.User.Username()
-
-	cost := func(n int) {
-		n *= 2
-		err := p.Repo.Cost(user, n)
-		if err != nil {
-			log.Println("ticket cost error: ", user, n, err)
-			downConn.Close()
-			upConn.Close()
-		}
-	}
-
-	u := &bytesCounter{w: upConn, d: 1 * time.Second, f: cost}
-
-	go u.Start()
-	defer u.Done()
-
-	go func() {
-		defer wg.Done()
-		io.Copy(u, downConn)
-	}()
-	go func() {
-		defer wg.Done()
-		io.Copy(downConn, u)
-	}()
-
-	wg.Wait()
+	io.Copy(w, resp.Body)
 }
