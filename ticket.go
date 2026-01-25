@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
-	"strconv"
 	"strings"
 	"time"
 
@@ -266,10 +265,9 @@ func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 
 		now := time.Now().Format(time.RFC3339)
-		yuan := strconv.FormatFloat(float64(req.Cents)/100, 'f', 2, 64)
 		o := Order{
 			OrderNo: req.Token + "@" + now,
-			Amount:  yuan,
+			CentNum: req.Cents,
 		}
 
 		notify := "https://" + r.Host + r.URL.Path
@@ -295,13 +293,9 @@ func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		i := strings.Index(o.OrderNo, "@")
 		token := o.OrderNo[:i]
 
-		yuan, err := strconv.ParseFloat(o.Amount, 64)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
+		yuan := o.CentNum / 100
 
-		bytes := int(yuan * float64(h.MBpCNY) * 1024 * 1024)
+		bytes := yuan * h.MBpCNY * 1024 * 1024
 
 		err = h.Repo.New(token, bytes, o.OrderNo, o.TradeNo)
 		if err != nil {

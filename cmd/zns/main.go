@@ -142,11 +142,18 @@ If not free, you should set the following environment variables:
 		repo = zns.FreeTicketRepo{}
 	} else {
 		repo = zns.NewTicketRepo(dbPath)
-		pay = zns.NewPay(
-			os.Getenv("ALIPAY_APP_ID"),
-			os.Getenv("ALIPAY_PRIVATE_KEY"),
-			os.Getenv("ALIPAY_PUBLIC_KEY"),
-		)
+		if os.Getenv("APP_PRVKEY_zns") != "" {
+			pay = zns.NewZzPay(
+				os.Getenv("APP_PRVKEY_zns"),
+				os.Getenv("APP_PUBKEY_zz"),
+			)
+		} else {
+			pay = zns.NewPay(
+				os.Getenv("ALIPAY_APP_ID"),
+				os.Getenv("ALIPAY_PRIVATE_KEY"),
+				os.Getenv("ALIPAY_PUBLIC_KEY"),
+			)
+		}
 	}
 
 	h := &zns.Handler{Upstream: upstream, Repo: repo, Root: http.Dir(root)}
