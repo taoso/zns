@@ -14,17 +14,21 @@ $ = document.querySelector.bind(document);
 $('#pay').onclick = (e) => {
   const y = $('#cents');
   const cents = Math.trunc(y.value * 100);
+
   if (cents < 100) {
     alert('最低一元钱起购');
     y.focus();
     return;
   }
+
+  const tier = parseInt(document.querySelector('input[name="tier"]:checked').dataset.tier) || 0
+
   fetch('/ticket/?buy=1', {
     method: 'POST',
     headers: {
       'content-type': 'application/json',
     },
-    body: JSON.stringify({cents: cents, token: token}),
+    body: JSON.stringify({cents, token, tier}),
   }).then((resp) => {
       resp.json().then((d) => {
         let qrcode = new QRCode($('#qr'), { width: 100, height: 100, useSVG: true });
@@ -74,35 +78,35 @@ $('#pay').onclick = (e) => {
 fetch(`/ticket/${token}`).then((resp) => {
   resp.json().then((tickets) => {
     if (!tickets) return;
+
     _ = document.createElement.bind(document);
     t = $('#tickets');
     t.style.display = 'table';
+
+    $('#vip').style.display = 'block';
 
     $('#ticket-title').style.display = 'block';
 
     $('#qr-msg').innerHTML = `DoH 主线 <span class="warn">(请勿在互联网上传播!)</span>
     <div class="doh-url">https://${document.domain}/dns/${token}</div>
-    <span>DoH 备线 </span><span class="warn">(需在主线异常时使用⚠️主线异常不计流量，主线正常计百倍流量)</span>
-    <div class="doh-url">https://us.${document.domain}/dns/${token}</div>
-    <span>DoT 域名 </span><span class="warn">(仅限安卓🤦‍♂️不推荐)</span>
-    <div class="doh-url">${token}.${document.domain}</div>
-    <div class="help">加电报群 <a href="https://t.me/letszns">t.me/letszns</a> 获取神秘信息🤫</div>`;
+    <div class="help">高级权益请加电报群 <a href="https://t.me/+gbMYhiYCBJJmZjBl" target="_blank">https://t.me/+gbMYhiYCBJJmZjBl</a> 获取🤫</div>`;
     let keyName = {
       "id":          "记录编号",
-      "bytes":       "剩余流量",
-      "total_bytes": "已购流量",
+      "cents":       "付款金额",
+      "tier":        "套餐等级",
       "pay_order":   "支付订单",
       "buy_order":   "业务订单",
       "created":     "创建时间",
-      "updated":     "更新时间",
       "expires":     "过期时间",
     };
     tickets.forEach((ticket) => {
       let isTime = ["created", "updated", "expires"];
       for ([key, value] of Object.entries(ticket)) {
+        if (!keyName[key]) continue;
+
         let tr = _('tr');
         let th = _('th');
-        th.innerText = keyName[key] || key;
+        th.innerText = keyName[key];
         let td = _('td');
         if (key === 'id') {
             tr.classList.add('id');
@@ -110,6 +114,9 @@ fetch(`/ticket/${token}`).then((resp) => {
         if (isTime.includes(key)) {
           value = new Date(Date.parse(value));
           value = value.toLocaleString();
+        }
+        if (key === 'cents') {
+          value = (value / 100).toFixed(2) + ' 元';
         }
         td.innerText = value;
         tr.appendChild(th);
