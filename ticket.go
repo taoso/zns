@@ -21,8 +21,8 @@ type Ticket struct {
 	Tier       int    `db:"tier" json:"tier"`
 	Bytes      int    `db:"bytes" json:"bytes"`
 	TotalBytes int    `db:"total_bytes" json:"total_bytes"`
-	PayOrder   string `db:"pay_order" json:"pay_order"`
-	BuyOrder   string `db:"buy_order" json:"buy_order"`
+	PayOrder   string `db:"pay_order" json:"pay_order"` // 商户订单号
+	BuyOrder   string `db:"buy_order" json:"buy_order"` // 支付宝交易号
 
 	Created time.Time `db:"created" json:"created"`
 	Updated time.Time `db:"updated" json:"updated"`
@@ -48,6 +48,8 @@ func (t *Ticket) Schema() string {
 }
 
 type TicketRepo interface {
+	// 新增购买记录
+	NewTicket(ticket Ticket) error
 	// New create and save one Ticket
 	New(token string, bytes int, trade string, order string) error
 	// Cost decreases  bytes of one Ticket
@@ -69,6 +71,10 @@ func NewTicketRepo(path string) TicketRepo {
 
 type FreeTicketRepo struct{}
 
+func (r FreeTicketRepo) NewTicket(ticket Ticket) error {
+	return nil
+}
+
 func (r FreeTicketRepo) New(token string, bytes int, trade, order string) error {
 	return nil
 }
@@ -89,6 +95,39 @@ func (r sqliteTicketReop) Init() {
 	if _, err := r.db.Exec((*Ticket).Schema(nil)); err != nil {
 		panic(err)
 	}
+}
+
+func (r sqliteTicketReop) NewTicket(t Ticket) error {
+	now := time.Now()
+
+	t.ID = 0
+	t.Created = now
+	t.Updated = now
+
+	oldTickets := []Ticket{}
+	sql := "select * from " + (*Ticket).TableName(nil) +
+		" where token = ? and tier = ? order by id desc"
+	err := r.db.Select(&oldTickets, sql, t.Token, t.Tier)
+	if err != nil {
+		return err
+	}
+
+	// 普通会员一元30天有效期，高级会员三元30天有效期
+	p := float64(t.Cents) / 100.0
+	if t.Tier == 1 {
+		p /= 3.0
+	}
+
+	d := time.Duration(30*p) * 24 * time.Hour
+
+	if len(oldTickets) > 0 && oldTickets[0].Expires.After(now) {
+		t.Expires = oldTickets[0].Expires.Add(d)
+	} else {
+		t.Expires = now.Add(d)
+	}
+
+	_, err = r.db.Insert(&t)
+	return err
 }
 
 func (r sqliteTicketReop) New(token string, bytes int, trade, order string) error {
@@ -238,6 +277,7 @@ func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		req := struct {
 			Token string `json:"token"`
 			Cents int    `json:"cents"`
+			Tier  int    `json:"tier"`
 		}{}
 		defer r.Body.Close()
 		err := json.NewDecoder(r.Body).Decode(&req)
@@ -269,6 +309,7 @@ func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		o := Order{
 			OrderNo: req.Token + "@" + now,
 			CentNum: req.Cents,
+			Tier:    req.Tier,
 		}
 
 		notify := "https://" + r.Host + r.URL.Path
@@ -294,11 +335,13 @@ func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		i := strings.Index(o.OrderNo, "@")
 		token := o.OrderNo[:i]
 
-		yuan := o.CentNum / 100
-
-		bytes := yuan * 1024 * 1024 * 1024
-
-		err = h.Repo.New(token, bytes, o.OrderNo, o.TradeNo)
+		err = h.Repo.NewTicket(Ticket{
+			Token:    token,
+			Cents:    o.CentNum,
+			Tier:     o.Tier,
+			PayOrder: o.OrderNo,
+			BuyOrder: o.TradeNo,
+		})
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

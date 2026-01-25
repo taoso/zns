@@ -38,6 +38,7 @@ type Order struct {
 	CentNum int    // 支付金额，单位分
 	OrderNo string // 商户订单号
 	TradeNo string // 支付宝交易号
+	Tier    int    // 购买的套餐等级
 }
 
 type aliPay struct {
@@ -45,11 +46,14 @@ type aliPay struct {
 }
 
 func (p aliPay) NewQR(order Order, notifyURL string) (string, error) {
+	extras := url.Values{}
+	extras.Add("tier", strconv.Itoa(order.Tier))
 	r, err := p.ali.TradePreCreate(context.TODO(), alipay.TradePreCreate{
 		Trade: alipay.Trade{
 			NotifyURL:      notifyURL,
 			Subject:        "ZNS Ticket",
 			OutTradeNo:     order.OrderNo,
+			PassbackParams: extras.Encode(),
 			TotalAmount:    strconv.FormatFloat(float64(order.CentNum)/100, 'f', 2, 64),
 			TimeoutExpress: "15m",
 		},
@@ -120,11 +124,14 @@ type zzPay struct {
 func (p zzPay) NewQR(order Order, notifyURL string) (qr string, err error) {
 	now := time.Now()
 
+	extras := url.Values{}
+	extras.Add("tier", strconv.Itoa(order.Tier))
+
 	args := zzOrderArgs{
 		CentNum:   order.CentNum,
 		OrderID:   order.OrderNo,
 		Subject:   "ZNS Ticket",
-		Extra:     "",
+		Extra:     extras.Encode(),
 		Created:   now,
 		NotifyURL: notifyURL,
 	}
@@ -196,6 +203,11 @@ func (p zzPay) OnPay(req *http.Request) (o Order, err error) {
 	o.OrderNo = args.OrderID
 	o.CentNum = args.CentNum
 	o.TradeNo = extras.Get("trade_no")
+
+	e, _ := url.QueryUnescape(extras.Get("extra"))
+	q, _ := url.ParseQuery(e)
+
+	o.Tier, _ = strconv.Atoi(q.Get("tier"))
 
 	return
 }
