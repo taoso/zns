@@ -17,6 +17,8 @@ import (
 type Ticket struct {
 	ID         int    `db:"id" json:"id"`
 	Token      string `db:"token" json:"-"`
+	Cents      int    `db:"cents" json:"cents"`
+	Tier       int    `db:"tier" json:"tier"`
 	Bytes      int    `db:"bytes" json:"bytes"`
 	TotalBytes int    `db:"total_bytes" json:"total_bytes"`
 	PayOrder   string `db:"pay_order" json:"pay_order"`
@@ -214,7 +216,6 @@ func (r sqliteTicketReop) List(token string, limit int) (tickets []Ticket, err e
 }
 
 type TicketHandler struct {
-	MBpCNY int
 	Pay    Pay
 	Repo   TicketRepo
 	AltSvc string
@@ -295,7 +296,7 @@ func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		yuan := o.CentNum / 100
 
-		bytes := yuan * h.MBpCNY * 1024 * 1024
+		bytes := yuan * 1024 * 1024 * 1024
 
 		err = h.Repo.New(token, bytes, o.OrderNo, o.TradeNo)
 		if err != nil {

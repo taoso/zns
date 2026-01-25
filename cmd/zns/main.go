@@ -22,7 +22,6 @@ var tlsHosts string
 var h12, h3, dot string
 var upstream string
 var dbPath string
-var price int
 var free bool
 var root string
 
@@ -102,7 +101,6 @@ func main() {
 	flag.StringVar(&upstream, "upstream", "https://doh.pub/dns-query", "DoH upstream URL")
 	flag.StringVar(&dbPath, "db", "", "File path of Sqlite database")
 	flag.StringVar(&root, "root", ".", "Root path of static files")
-	flag.IntVar(&price, "price", 1024, "Traffic price MB/Yuan")
 	flag.BoolVar(&free, "free", false, `Whether allow free access.
 If not free, you should set the following environment variables:
 	- ALIPAY_APP_ID
@@ -157,7 +155,7 @@ If not free, you should set the following environment variables:
 	}
 
 	h := &zns.Handler{Upstream: upstream, Repo: repo, Root: http.Dir(root)}
-	th := &zns.TicketHandler{MBpCNY: price, Pay: pay, Repo: repo}
+	th := &zns.TicketHandler{Pay: pay, Repo: repo}
 
 	mux := http.NewServeMux()
 	mux.Handle("/dns-query", h)
