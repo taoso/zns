@@ -86,3 +86,7 @@ span.warn {
     transform: translateY(-1px);
   }
 }
+
+.tier-note {
+  color: red;
+}

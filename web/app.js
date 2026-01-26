@@ -75,6 +75,18 @@ $('#pay').onclick = (e) => {
     });
 }
 
+document.querySelectorAll('input[type="radio"]').forEach(radio => {
+  radio.onchange = (e) => {
+    if (e.target.dataset.tier === "1") {
+      $(`#tier-note-1`).style.display = 'block';
+      $(`#tier-note-0`).style.display = 'none';
+    } else {
+      $(`#tier-note-0`).style.display = 'block';
+      $(`#tier-note-1`).style.display = 'none';
+    }
+  };
+});
+
 fetch(`/ticket/${token}`).then((resp) => {
   resp.json().then((tickets) => {
     if (!tickets) return;
