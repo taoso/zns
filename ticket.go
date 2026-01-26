@@ -258,9 +258,16 @@ type TicketHandler struct {
 	Pay    Pay
 	Repo   TicketRepo
 	AltSvc string
+
+	Nodes []Node
 }
 
 func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if strings.HasPrefix(r.URL.Path, "/my-nodes/") {
+		h.GetMyNodes(w, r)
+		return
+	}
+
 	if r.Method == http.MethodGet {
 		token := r.PathValue("token")
 		ts, err := h.Repo.List(token, 10)
@@ -349,4 +356,43 @@ func (h *TicketHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 		w.Write([]byte("success"))
 	}
+}
+
+type Node struct {
+	Host string `json:"host" yaml:"host"`
+	Flag string `json:"flag" yaml:"flag"`
+	IPv6 bool   `json:"ipv6" yaml:"ipv6"`
+	Tier int    `json:"tier" yaml:"tier"`
+}
+
+func (h *TicketHandler) GetMyNodes(w http.ResponseWriter, r *http.Request) {
+	token := r.PathValue("token")
+
+	tickets, err := h.Repo.List(token, 10)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	tier := -1
+	now := time.Now()
+
+	for _, t := range tickets {
+		if t.Expires.After(now) {
+			if t.Tier > tier {
+				tier = t.Tier
+			}
+		}
+	}
+
+	nodes := []Node{}
+
+	for _, n := range h.Nodes {
+		if n.Tier <= tier {
+			nodes = append(nodes, n)
+		}
+	}
+
+	w.Header().Add("content-type", "application/json")
+	json.NewEncoder(w).Encode(nodes)
 }

@@ -8,14 +8,13 @@ import (
 	"net/http"
 	"net/netip"
 	"strings"
-	"time"
 
 	"github.com/miekg/dns"
 )
 
 type Handler struct {
 	Upstream string
-	Repo     TicketRepo
+	Auther   Author
 	AltSvc   string
 	Root     http.Dir
 }
@@ -58,13 +57,12 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ts, err := h.Repo.List(token, 1)
+	ok, err := h.Auther.Auth(token)
 	if err != nil {
-		http.Error(w, "invalid token", http.StatusInternalServerError)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
-	}
-	if len(ts) == 0 || ts[0].Expires.Before(time.Now()) {
-		http.Error(w, "invalid token", http.StatusUnauthorized)
+	} else if !ok {
+		http.Error(w, "bye", http.StatusBadRequest)
 		return
 	}
 

@@ -13,6 +13,7 @@ import (
 
 	"github.com/quic-go/quic-go/http3"
 	"github.com/taoso/zns"
+	"go.yaml.in/yaml/v4"
 	"golang.org/x/crypto/acme/autocert"
 )
 
@@ -24,6 +25,7 @@ var upstream string
 var dbPath string
 var free bool
 var root string
+var nodes string
 
 func listen() (lnH12, lnDot net.Listener, lnH3 net.PacketConn, err error) {
 	if h12 != "" {
@@ -101,11 +103,7 @@ func main() {
 	flag.StringVar(&upstream, "upstream", "https://doh.pub/dns-query", "DoH upstream URL")
 	flag.StringVar(&dbPath, "db", "", "File path of Sqlite database")
 	flag.StringVar(&root, "root", ".", "Root path of static files")
-	flag.BoolVar(&free, "free", false, `Whether allow free access.
-If not free, you should set the following environment variables:
-	- APP_PRVKEY_zns
-	- APP_PUBKEY_zz
-`)
+	flag.StringVar(&nodes, "nodes", "", "Server nodes info file path")
 
 	flag.Parse()
 
@@ -145,14 +143,30 @@ If not free, you should set the following environment variables:
 		)
 	}
 
-	h := &zns.Handler{Upstream: upstream, Repo: repo, Root: http.Dir(root)}
+	h := &zns.Handler{
+		Upstream: upstream,
+		Root:     http.Dir(root),
+		Auther:   zns.DBAuthor{Repo: repo},
+	}
 	th := &zns.TicketHandler{Pay: pay, Repo: repo}
+
+	if nodes != "" {
+		b, err := os.ReadFile(nodes)
+		if err != nil {
+			log.Fatal("Failed to load nodes file: ", err)
+		}
+
+		if err := yaml.Unmarshal(b, &th.Nodes); err != nil {
+			log.Fatal("Failed to parse nodes file: ", err)
+		}
+	}
 
 	mux := http.NewServeMux()
 	mux.Handle("/dns-query", h)
 	mux.Handle("/dns/{token}", h)
 	mux.Handle("/ticket/", th)
 	mux.Handle("/ticket/{token}", th)
+	mux.Handle("/my-nodes/{token}", th)
 	mux.Handle("/", http.FileServer(h.Root))
 
 	altSvc := ""
