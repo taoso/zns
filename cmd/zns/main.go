@@ -161,11 +161,6 @@ func main() {
 
 	altSvc := ""
 	x := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodConnect {
-			h.ServeHTTP(w, r)
-			return
-		}
-
 		if r.ProtoMajor < 3 && altSvc != "" {
 			w.Header().Set("Alt-Svc", altSvc)
 		}
