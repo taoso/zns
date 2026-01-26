@@ -1,6 +1,10 @@
 package zns
 
-import "time"
+import (
+	"time"
+
+	"github.com/BurntSushi/toml"
+)
 
 type Author interface {
 	Auth(token string) (bool, error)
@@ -22,4 +26,23 @@ func (a DBAuthor) Auth(token string) (ok bool, err error) {
 	}
 
 	return true, nil
+}
+
+type FileAuther struct {
+	Path string
+
+	tokens map[string]bool
+}
+
+func (a *FileAuther) Load() error {
+	tokens := map[string]bool{}
+	_, err := toml.DecodeFile(a.Path, &tokens)
+	if err == nil {
+		a.tokens = tokens
+	}
+	return err
+}
+
+func (a *FileAuther) Auth(token string) (ok bool, err error) {
+	return a.tokens[token], nil
 }

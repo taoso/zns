@@ -23,7 +23,7 @@ var tlsHosts string
 var h12, h3, dot string
 var upstream string
 var dbPath string
-var free bool
+var tokenPath string
 var root string
 var nodes string
 
@@ -55,6 +55,7 @@ func main() {
 	flag.StringVar(&dot, "dot", ":853", "Listen address for DoT")
 	flag.StringVar(&upstream, "upstream", "https://doh.pub/dns-query", "DoH upstream URL")
 	flag.StringVar(&dbPath, "db", "", "File path of Sqlite database")
+	flag.StringVar(&tokenPath, "token", "", "File path of auth tokens")
 	flag.StringVar(&root, "root", ".", "Root path of static files")
 	flag.StringVar(&nodes, "nodes", "", "Server nodes info file path")
 
@@ -80,6 +81,8 @@ func main() {
 			if err != nil {
 				log.Println("Failed to load TLS certificate: ", err)
 				return
+			} else {
+				log.Println("Loaded TLS certificate from ", file)
 			}
 			cert = &c
 		})
@@ -101,9 +104,7 @@ func main() {
 
 	var pay zns.Pay
 	var repo zns.TicketRepo
-	if free {
-		repo = zns.FreeTicketRepo{}
-	} else {
+	if dbPath != "" {
 		repo = zns.NewTicketRepo(dbPath)
 		pay = zns.NewZzPay(
 			os.Getenv("APP_PRVKEY_zns"),
@@ -116,6 +117,24 @@ func main() {
 		Root:     http.Dir(root),
 		Auther:   zns.DBAuthor{Repo: repo},
 	}
+
+	if tokenPath != "" {
+		fa := &zns.FileAuther{Path: tokenPath}
+		if err = fa.Load(); err != nil {
+			log.Fatal("Failed to load tokens: ", err)
+		}
+
+		l.Watch(tokenPath, func(file string) {
+			if err = fa.Load(); err != nil {
+				log.Println("Failed to reload tokens: ", err)
+			} else {
+				log.Println("Reloaded tokens from ", file)
+			}
+		})
+
+		h.Auther = fa
+	}
+
 	th := &zns.TicketHandler{Pay: pay, Repo: repo}
 
 	if nodes != "" {
@@ -132,10 +151,13 @@ func main() {
 	mux := http.NewServeMux()
 	mux.Handle("/dns-query", h)
 	mux.Handle("/dns/{token}", h)
-	mux.Handle("/ticket/", th)
-	mux.Handle("/ticket/{token}", th)
-	mux.Handle("/my-nodes/{token}", th)
-	mux.Handle("/", http.FileServer(h.Root))
+
+	if dbPath != "" {
+		mux.Handle("/ticket/", th)
+		mux.Handle("/ticket/{token}", th)
+		mux.Handle("/my-nodes/{token}", th)
+		mux.Handle("/", http.FileServer(h.Root))
+	}
 
 	altSvc := ""
 	x := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
