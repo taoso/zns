@@ -46,53 +46,6 @@ func listen() (lnH12, lnDot net.Listener, lnH3 net.PacketConn, err error) {
 	return
 }
 
-type certLoader struct {
-	certFile, keyFile string
-
-	lastMod time.Time
-
-	t *time.Ticker
-
-	cert *tls.Certificate
-}
-
-func (l *certLoader) Load() {
-	info, err := os.Stat(l.certFile)
-	if err != nil {
-		panic(err)
-	}
-	lastMod := info.ModTime()
-	if !lastMod.After(l.lastMod) {
-		return
-	}
-	cert, err := tls.LoadX509KeyPair(l.certFile, l.keyFile)
-	if err != nil {
-		panic(err)
-	}
-	l.cert = &cert
-	l.lastMod = lastMod
-}
-
-func (l *certLoader) Stop() {
-	l.t.Stop()
-}
-
-func (l *certLoader) Start() {
-	l.Load()
-	go l.Loop()
-}
-
-func (l *certLoader) Loop() {
-	l.t = time.NewTicker(1 * time.Minute)
-	for range l.t.C {
-		l.Load()
-	}
-}
-
-func (l *certLoader) GetCertificate(*tls.ClientHelloInfo) (*tls.Certificate, error) {
-	return l.cert, nil
-}
-
 func main() {
 	flag.StringVar(&tlsCert, "tls-cert", "", "File path of TLS certificate")
 	flag.StringVar(&tlsKey, "tls-key", "", "File path of TLS key")
@@ -107,6 +60,8 @@ func main() {
 
 	flag.Parse()
 
+	l := zns.FileLoader{Interval: 5 * time.Minute}
+
 	var tlsCfg *tls.Config
 	if tlsHosts != "" {
 		acm := autocert.Manager{
@@ -118,11 +73,24 @@ func main() {
 		tlsCfg = acm.TLSConfig()
 	} else {
 		tlsCfg = &tls.Config{}
-		l := certLoader{certFile: tlsCert, keyFile: tlsKey}
-		l.Start()
-		defer l.Stop()
-		tlsCfg.GetCertificate = l.GetCertificate
+
+		var cert *tls.Certificate
+		l.Watch(tlsCert, func(file string) {
+			c, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+			if err != nil {
+				log.Println("Failed to load TLS certificate: ", err)
+				return
+			}
+			cert = &c
+		})
+
+		tlsCfg.GetCertificate = func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+			return cert, nil
+		}
 	}
+
+	l.Start()
+	defer l.Stop()
 
 	tlsCfg.NextProtos = append(tlsCfg.NextProtos, "h2", "http/1.1")
 
