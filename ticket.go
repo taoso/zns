@@ -2,27 +2,23 @@ package zns
 
 import (
 	"crypto/rand"
-	"database/sql"
 	"encoding/base64"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strings"
 	"time"
 
 	"github.com/go-kiss/sqlx"
-	"modernc.org/sqlite"
+	_ "modernc.org/sqlite"
 )
 
 type Ticket struct {
-	ID         int    `db:"id" json:"id"`
-	Token      string `db:"token" json:"-"`
-	Cents      int    `db:"cents" json:"cents"`
-	Tier       int    `db:"tier" json:"tier"`
-	Bytes      int    `db:"bytes" json:"bytes"`
-	TotalBytes int    `db:"total_bytes" json:"total_bytes"`
-	PayOrder   string `db:"pay_order" json:"pay_order"` // 商户订单号
-	BuyOrder   string `db:"buy_order" json:"buy_order"` // 支付宝交易号
+	ID       int    `db:"id" json:"id"`
+	Token    string `db:"token" json:"-"`
+	Cents    int    `db:"cents" json:"cents"`
+	Tier     int    `db:"tier" json:"tier"`
+	PayOrder string `db:"pay_order" json:"pay_order"` // 商户订单号
+	BuyOrder string `db:"buy_order" json:"buy_order"` // 支付宝交易号
 
 	Created time.Time `db:"created" json:"created"`
 	Updated time.Time `db:"updated" json:"updated"`
@@ -35,8 +31,8 @@ func (t *Ticket) Schema() string {
 	return "CREATE TABLE IF NOT EXISTS " + t.TableName() + `(
 	` + t.KeyName() + ` INTEGER PRIMARY KEY AUTOINCREMENT,
 	token TEXT,
-	bytes INTEGER,
-	total_bytes INTEGER,
+	cents INTEGER,
+	tier INTEGER,
 	pay_order TEXT,
 	buy_order TEXT,
 	created DATETIME,
@@ -50,10 +46,6 @@ func (t *Ticket) Schema() string {
 type TicketRepo interface {
 	// 新增购买记录
 	NewTicket(ticket Ticket) error
-	// New create and save one Ticket
-	New(token string, bytes int, trade string, order string) error
-	// Cost decreases  bytes of one Ticket
-	Cost(token string, bytes int) error
 	// List fetches all current Tickets with bytes available.
 	List(token string, limit int) ([]Ticket, error)
 }
@@ -110,123 +102,6 @@ func (r sqliteTicketReop) NewTicket(t Ticket) error {
 
 	_, err = r.db.Insert(&t)
 	return err
-}
-
-func (r sqliteTicketReop) New(token string, bytes int, trade, order string) error {
-	now := time.Now()
-
-	ts, err := r.List(token, 1)
-	if err != nil {
-		return err
-	}
-
-	t := Ticket{
-		Token:      token,
-		Bytes:      bytes,
-		TotalBytes: bytes,
-		PayOrder:   order,
-		BuyOrder:   trade,
-		Created:    now,
-		Updated:    now,
-	}
-
-	gb := bytes / 1024 / 1024 / 1024
-	if gb == 0 {
-		gb = 1
-	}
-	d := 30 * 24 * time.Hour * time.Duration(gb)
-	if len(ts) == 1 && ts[0].Expires.After(now) {
-		t.Expires = ts[0].Expires.Add(d)
-	} else {
-		t.Expires = now.Add(d)
-	}
-
-	_, err = r.db.Insert(&t)
-
-	se := &sqlite.Error{}
-	// constraint failed: UNIQUE constraint failed
-	if errors.As(err, &se) && se.Code() == 2067 {
-		return nil
-	}
-
-	return err
-}
-
-func (r sqliteTicketReop) Cost(token string, bytes int) error {
-	now := time.Now()
-
-	sql := "update " + (*Ticket).TableName(nil) +
-		" set bytes = bytes - ?, updated = ? " +
-		" where id in (select id from " + (*Ticket).TableName(nil) +
-		" where token = ? and expires > ? order by id asc limit 1) and bytes >= ?"
-
-	_r, err := r.db.Exec(sql, bytes, now, token, now, bytes)
-	if err != nil {
-		return err
-	}
-	n, err := _r.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if n == 1 {
-		return nil
-	}
-
-	return r.costSlow(token, bytes)
-}
-
-func (r sqliteTicketReop) costSlow(token string, bytes int) error {
-	q := "select * from " + (*Ticket).TableName(nil) +
-		" where token = ? and bytes > 0 and expires > ?" +
-		" order by id asc"
-	var ts []Ticket
-	if err := r.db.Select(&ts, q, token, time.Now()); err != nil {
-		return err
-	}
-
-	if len(ts) == 0 {
-		return sql.ErrNoRows
-	}
-
-	var i int
-	var t Ticket
-	for i, t = range ts {
-		if t.Bytes >= bytes {
-			ts[i].Bytes -= bytes
-			bytes = 0
-			break
-		} else {
-			bytes -= t.Bytes
-			ts[i].Bytes = 0
-		}
-	}
-
-	if bytes > 0 {
-		ts[i].Bytes -= bytes
-	}
-
-	if i == 0 {
-		t := ts[i]
-		t.Updated = time.Now()
-		_, err := r.db.Update(&t)
-		return err
-	}
-
-	tx, err := r.db.Beginx()
-	if err != nil {
-		return err
-	}
-
-	for ; i >= 0; i-- {
-		t := ts[i]
-		t.Updated = time.Now()
-		_, err := tx.Update(&t)
-		if err != nil {
-			tx.Rollback()
-			return err
-		}
-	}
-	return tx.Commit()
 }
 
 func (r sqliteTicketReop) List(token string, limit int) (tickets []Ticket, err error) {

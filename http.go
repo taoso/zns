@@ -15,7 +15,6 @@ import (
 type Handler struct {
 	Upstream string
 	Auther   Author
-	AltSvc   string
 	Root     http.Dir
 }
 
