@@ -8,68 +8,67 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/quic-go/quic-go/http3"
 	"github.com/taoso/zns"
-	"go.yaml.in/yaml/v4"
 	"golang.org/x/crypto/acme/autocert"
 )
 
-var tlsCert string
-var tlsKey string
-var tlsHosts string
-var h12, h3, dot string
-var upstream string
-var dbPath string
-var tokenPath string
-var root string
-var nodes string
-var blocklist string
+var configPath string
 
-func listen() (lnH12, lnDot net.Listener, lnH3 net.PacketConn, err error) {
-	if h12 != "" {
-		lnH12, err = net.Listen("tcp", h12)
+type Config struct {
+	TLSCert   string     `toml:"tls_cert"`
+	TLSKey    string     `toml:"tls_key"`
+	TLSHosts  []string   `toml:"tls_hosts"`
+	DoHAddr   string     `toml:"doh_addr"`
+	DoH3Addr  string     `toml:"doh3_addr"`
+	DoTAddr   string     `toml:"dot_addr"`
+	Upstream  string     `toml:"upstream"`
+	DBPath    string     `toml:"db_path"`
+	TokenPath string     `toml:"token_path"`
+	Root      string     `toml:"root_path"`
+	Blocklist string     `toml:"blocklist_path"`
+	Nodes     []zns.Node `toml:"nodes"`
+}
+
+func listen(c Config) (lnH12, lnDot net.Listener, lnH3 net.PacketConn, err error) {
+	if c.DoHAddr != "" {
+		lnH12, err = net.Listen("tcp", c.DoHAddr)
 		if err != nil {
 			return
 		}
 	}
-	if dot != "" {
-		lnDot, err = net.Listen("tcp", dot)
+	if c.DoTAddr != "" {
+		lnDot, err = net.Listen("tcp", c.DoTAddr)
 		if err != nil {
 			return
 		}
 	}
-	if h3 != "" {
-		lnH3, err = net.ListenPacket("udp", h3)
+	if c.DoH3Addr != "" {
+		lnH3, err = net.ListenPacket("udp", c.DoH3Addr)
 	}
 	return
 }
 
 func main() {
-	flag.StringVar(&tlsCert, "tls-cert", "", "File path of TLS certificate")
-	flag.StringVar(&tlsKey, "tls-key", "", "File path of TLS key")
-	flag.StringVar(&tlsHosts, "tls-hosts", "", "Host name for ACME")
-	flag.StringVar(&h12, "h12", ":443", "Listen address for http1 and h2")
-	flag.StringVar(&h3, "h3", ":443", "Listen address for h3")
-	flag.StringVar(&dot, "dot", ":853", "Listen address for DoT")
-	flag.StringVar(&upstream, "upstream", "https://doh.pub/dns-query", "DoH upstream URL")
-	flag.StringVar(&dbPath, "db", "", "File path of Sqlite database")
-	flag.StringVar(&tokenPath, "token", "", "File path of auth tokens")
-	flag.StringVar(&root, "root", ".", "Root path of static files")
-	flag.StringVar(&nodes, "nodes", "", "Server nodes info file path")
-	flag.StringVar(&blocklist, "blocklist", "", "AWAvenue Ads Rule (Mosdns V5) blocklist file path")
-
+	flag.StringVar(&configPath, "c", "", "Config file path (TOML format)")
 	flag.Parse()
+
+	config := Config{}
+
+	if _, err := toml.DecodeFile(configPath, &config); err != nil {
+		log.Fatalln("Failed to load config file:", err)
+	}
 
 	l := zns.NewFileLoader()
 
 	var tlsCfg *tls.Config
-	if tlsHosts != "" {
+	if len(config.TLSHosts) > 0 {
 		acm := autocert.Manager{
 			Prompt:     autocert.AcceptTOS,
 			Cache:      autocert.DirCache(os.Getenv("HOME") + "/.autocert"),
-			HostPolicy: autocert.HostWhitelist(strings.Split(tlsHosts, ",")...),
+			HostPolicy: autocert.HostWhitelist(config.TLSHosts...),
 		}
 
 		tlsCfg = acm.TLSConfig()
@@ -77,8 +76,8 @@ func main() {
 		tlsCfg = &tls.Config{}
 
 		var cert *tls.Certificate
-		l.Watch(tlsCert, func(file string) {
-			c, err := tls.LoadX509KeyPair(tlsCert, tlsKey)
+		l.Watch(config.TLSCert, func(file string) {
+			c, err := tls.LoadX509KeyPair(config.TLSCert, config.TLSKey)
 			if err != nil {
 				log.Println("Failed to load TLS certificate: ", err)
 				return
@@ -93,20 +92,12 @@ func main() {
 		}
 	}
 
-	l.Start()
-	defer l.Stop()
-
 	tlsCfg.NextProtos = append(tlsCfg.NextProtos, "h2", "http/1.1")
-
-	lnH12, lnDot, lnH3, err := listen()
-	if err != nil {
-		panic(err)
-	}
 
 	var pay zns.Pay
 	var repo zns.TicketRepo
-	if dbPath != "" {
-		repo = zns.NewTicketRepo(dbPath)
+	if config.DBPath != "" {
+		repo = zns.NewTicketRepo(config.DBPath)
 		pay = zns.NewZzPay(
 			os.Getenv("APP_PRVKEY_zns"),
 			os.Getenv("APP_PUBKEY_zz"),
@@ -114,19 +105,19 @@ func main() {
 	}
 
 	h := &zns.Handler{
-		Upstream: upstream,
-		Root:     http.Dir(root),
+		Upstream: config.Upstream,
+		Root:     http.Dir(config.Root),
 		Auther:   zns.DBAuthor{Repo: repo},
 	}
 
-	if tokenPath != "" {
-		fa := &zns.FileAuther{Path: tokenPath}
-		if err = fa.Load(); err != nil {
+	if config.TokenPath != "" {
+		fa := &zns.FileAuther{Path: config.TokenPath}
+		if err := fa.Load(); err != nil {
 			log.Fatal("Failed to load tokens: ", err)
 		}
 
-		l.Watch(tokenPath, func(file string) {
-			if err = fa.Load(); err != nil {
+		l.Watch(config.TokenPath, func(file string) {
+			if err := fa.Load(); err != nil {
 				log.Println("Failed to reload tokens: ", err)
 			} else {
 				log.Println("Reloaded tokens from ", file)
@@ -136,18 +127,18 @@ func main() {
 		h.Auther = fa
 	}
 
-	if blocklist != "" {
+	if config.Blocklist != "" {
 		b := zns.NewBlockList()
-		if err := b.Load(blocklist); err != nil {
+		if err := b.Load(config.Blocklist); err != nil {
 			log.Fatal("Failed to load blocklist: ", err)
 		}
 
 		h.Blocker = b
-		log.Println("Loaded blocklist from ", blocklist)
+		log.Println("Loaded blocklist from ", config.Blocklist)
 
-		l.Watch(blocklist, func(file string) {
+		l.Watch(config.Blocklist, func(file string) {
 			b := zns.NewBlockList()
-			if err := b.Load(blocklist); err != nil {
+			if err := b.Load(file); err != nil {
 				log.Fatal("Failed to load blocklist: ", err)
 			} else {
 				h.Blocker = b
@@ -156,24 +147,18 @@ func main() {
 		})
 	}
 
+	l.Start()
+	defer l.Stop()
+
 	th := &zns.TicketHandler{Pay: pay, Repo: repo}
 
-	if nodes != "" {
-		b, err := os.ReadFile(nodes)
-		if err != nil {
-			log.Fatal("Failed to load nodes file: ", err)
-		}
-
-		if err := yaml.Unmarshal(b, &th.Nodes); err != nil {
-			log.Fatal("Failed to parse nodes file: ", err)
-		}
-	}
+	th.Nodes = config.Nodes
 
 	mux := http.NewServeMux()
 	mux.Handle("/dns-query", h)
 	mux.Handle("/dns/{token}", h)
 
-	if dbPath != "" {
+	if config.DBPath != "" {
 		mux.Handle("/ticket/", th)
 		mux.Handle("/ticket/{token}", th)
 		mux.Handle("/my-nodes/{token}", th)
@@ -188,6 +173,11 @@ func main() {
 
 		mux.ServeHTTP(w, r)
 	})
+
+	lnH12, lnDot, lnH3, err := listen(config)
+	if err != nil {
+		panic(err)
+	}
 
 	if lnH3 != nil {
 		p := lnH3.LocalAddr().(*net.UDPAddr).Port
@@ -212,7 +202,7 @@ func main() {
 	}
 
 	lnTLS := tls.NewListener(lnH12, tlsCfg)
-	if err = http.Serve(lnTLS, x); err != nil {
+	if err := http.Serve(lnTLS, x); err != nil {
 		log.Fatal(err)
 	}
 }

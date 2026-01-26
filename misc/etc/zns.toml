@@ -1,0 +1,38 @@
+# ZNS 主节点配置文件
+
+# http/1.1 和 h2 监听地址，不设置则不启用
+doh_addr = ":443"
+# DoH3 监听地址，不设置则不启用
+doh3_addr = ":443"
+# DoT 监听地址，不设置则不启用
+dot_addr = ":853"
+# SSL 证书和私钥路径
+tls_cert = "/etc/ssl/zns.lehu.in/fullchain.pem"
+tls_key = "/etc/ssl/zns.lehu.in/key.pem"
+# ACME 自动签发的域名列表
+# 仅在 tls_cert 和 tls_key 未设置时生效
+tls_hosts = ["zns.lehu.in"]
+# 上游 DoH 服务器地址
+upstream = "https://dns.alidns.com/dns-query"
+# 数据库文件路径
+# 设置后方能处理充值等相关请求
+# 主节点必需设置
+db_path = "/var/lib/zns/zns.db"
+# 访问令牌文件路径，设置后仅能处理 DoH 查询
+# tokens.toml 格式如下：
+# token1 = true
+# token2 = true
+# ...
+token_path = "/etc/zns/tokens.toml"
+# Web 根目录路径，主节点必需设置
+root_path = "/var/lib/zns/www"
+# 广告拦截列表路径，设置后启用广告拦截功能
+# https://raw.githubusercontent.com/TG-Twilight/AWAvenue-Ads-Rule/main/Filters/AWAvenue-Ads-Rule-Mosdns_v5.txt
+blocklist_path = "/etc/zns/awa.txt"
+
+# DoH 节点列表
+[[nodes]]
+host = "zns.lehu.in" # 域名
+flag = "🇭🇰"          # 地区旗帜
+ipv6 = false         # 是否支持 IPv6
+tier = 0             # 节点等级，只能对应等级以上的用户才能使用该节点

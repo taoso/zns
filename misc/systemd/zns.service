@@ -1,17 +1,17 @@
 [Unit]
 Description=zns service
 After=network.target
-Requires=zns-tcp.socket zns-udp.socket
 
 [Service]
 LimitNOFILE=8192
-EnvironmentFile=/usr/local/etc/zns/env
-ExecStart=/usr/local/bin/zns -root /var/lib/zns/www -tls-hosts zns.nu.mk -db /var/lib/zns/zns.db
+EnvironmentFile=/etc/zns/env
+ExecStart=/usr/local/bin/zns -c /etc/zns/zns.toml
 ExecReload=/bin/kill -HUP $MAINPID
 User=www-data
 Group=www-data
 KillMode=process
 Restart=on-failure
+AmbientCapabilities=CAP_NET_BIND_SERVICE
 
 [Install]
 WantedBy=multi-user.target
