@@ -2,7 +2,6 @@ package zns
 
 import (
 	"bytes"
-	"context"
 	"crypto/ed25519"
 	"encoding/base64"
 	"encoding/json"
@@ -12,8 +11,6 @@ import (
 	"net/url"
 	"strconv"
 	"time"
-
-	"github.com/smartwalle/alipay/v3"
 )
 
 type Pay interface {
@@ -21,70 +18,11 @@ type Pay interface {
 	OnPay(req *http.Request) (Order, error)
 }
 
-func NewPay(appID, privateKey, publicKey string) Pay {
-	client, err := alipay.New(appID, privateKey, true)
-	if err != nil {
-		panic(err)
-	}
-
-	if err = client.LoadAliPayPublicKey(publicKey); err != nil {
-		panic(err)
-	}
-
-	return aliPay{ali: client}
-}
-
 type Order struct {
 	CentNum int    // 支付金额，单位分
 	OrderNo string // 商户订单号
 	TradeNo string // 支付宝交易号
 	Tier    int    // 购买的套餐等级
-}
-
-type aliPay struct {
-	ali *alipay.Client
-}
-
-func (p aliPay) NewQR(order Order, notifyURL string) (string, error) {
-	extras := url.Values{}
-	extras.Add("tier", strconv.Itoa(order.Tier))
-	r, err := p.ali.TradePreCreate(context.TODO(), alipay.TradePreCreate{
-		Trade: alipay.Trade{
-			NotifyURL:      notifyURL,
-			Subject:        "ZNS Ticket",
-			OutTradeNo:     order.OrderNo,
-			PassbackParams: extras.Encode(),
-			TotalAmount:    strconv.FormatFloat(float64(order.CentNum)/100, 'f', 2, 64),
-			TimeoutExpress: "15m",
-		},
-	})
-	if err != nil {
-		return "", err
-	}
-
-	if r.Code != alipay.CodeSuccess {
-		return "", fmt.Errorf("TradePreCreate error: %w", err)
-	}
-
-	return r.QRCode, nil
-}
-
-func (p aliPay) OnPay(req *http.Request) (o Order, err error) {
-	n, err := p.ali.GetTradeNotification(req)
-	if err != nil {
-		return
-	}
-
-	o.OrderNo = n.OutTradeNo
-	o.TradeNo = n.TradeNo
-
-	f, err := strconv.ParseFloat(n.ReceiptAmount, 64)
-	if err != nil {
-		return
-	}
-
-	o.CentNum = int(f * 100)
-	return
 }
 
 func NewZzPay(znsPrivateKey, zzPublicKey string) Pay {

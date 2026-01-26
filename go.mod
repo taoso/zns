@@ -6,7 +6,6 @@ require (
 	github.com/go-kiss/sqlx v0.0.0-20250514141631-7be2cb31cba2
 	github.com/miekg/dns v1.1.72
 	github.com/quic-go/quic-go v0.59.0
-	github.com/smartwalle/alipay/v3 v3.2.28
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/crypto v0.47.0
 	modernc.org/sqlite v1.44.3
@@ -26,9 +25,6 @@ require (
 	github.com/quic-go/qpack v0.6.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/rogpeppe/go-internal v1.13.1 // indirect
-	github.com/smartwalle/ncrypto v1.0.4 // indirect
-	github.com/smartwalle/ngx v1.0.12 // indirect
-	github.com/smartwalle/nsign v1.0.9 // indirect
 	go.uber.org/mock v0.6.0 // indirect
 	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	golang.org/x/mod v0.32.0 // indirect

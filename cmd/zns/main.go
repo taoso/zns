@@ -103,9 +103,8 @@ func main() {
 	flag.StringVar(&root, "root", ".", "Root path of static files")
 	flag.BoolVar(&free, "free", false, `Whether allow free access.
 If not free, you should set the following environment variables:
-	- ALIPAY_APP_ID
-	- ALIPAY_PRIVATE_KEY
-	- ALIPAY_PUBLIC_KEY
+	- APP_PRVKEY_zns
+	- APP_PUBKEY_zz
 `)
 
 	flag.Parse()
@@ -140,18 +139,10 @@ If not free, you should set the following environment variables:
 		repo = zns.FreeTicketRepo{}
 	} else {
 		repo = zns.NewTicketRepo(dbPath)
-		if os.Getenv("APP_PRVKEY_zns") != "" {
-			pay = zns.NewZzPay(
-				os.Getenv("APP_PRVKEY_zns"),
-				os.Getenv("APP_PUBKEY_zz"),
-			)
-		} else {
-			pay = zns.NewPay(
-				os.Getenv("ALIPAY_APP_ID"),
-				os.Getenv("ALIPAY_PRIVATE_KEY"),
-				os.Getenv("ALIPAY_PUBLIC_KEY"),
-			)
-		}
+		pay = zns.NewZzPay(
+			os.Getenv("APP_PRVKEY_zns"),
+			os.Getenv("APP_PUBKEY_zz"),
+		)
 	}
 
 	h := &zns.Handler{Upstream: upstream, Repo: repo, Root: http.Dir(root)}
