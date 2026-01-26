@@ -10,6 +10,10 @@ h1 > img {
 
 #tickets tr.id {
   border-top: dashed 1px gray;
+
+}
+#tickets tr > th {
+  min-width: 4em;
 }
 
 #qr {
@@ -42,6 +46,7 @@ span.warn {
 
 .doh-url > .flag {
   margin-right: 0.2em;
+  font-family: "Twemoji Country Flags";
 }
 
 .doh-url > .flag:after {
