@@ -1,3 +1,4 @@
 .env
 cmd/zns/zns
 awa.txt
+zns.db*
