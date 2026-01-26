@@ -1,6 +1,7 @@
 package zns
 
 import (
+	"log"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -38,6 +39,7 @@ func (a *FileAuther) Load() error {
 	tokens := map[string]bool{}
 	_, err := toml.DecodeFile(a.Path, &tokens)
 	if err == nil {
+		log.Println("Loaded tokens: ", len(tokens))
 		a.tokens = tokens
 	}
 	return err

@@ -4,6 +4,7 @@ go 1.25
 
 require (
 	github.com/BurntSushi/toml v1.6.0
+	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-kiss/sqlx v0.0.0-20250514141631-7be2cb31cba2
 	github.com/miekg/dns v1.1.72
 	github.com/quic-go/quic-go v0.59.0

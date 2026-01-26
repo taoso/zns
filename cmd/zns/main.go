@@ -9,7 +9,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
 	"github.com/quic-go/quic-go/http3"
 	"github.com/taoso/zns"
@@ -61,7 +60,7 @@ func main() {
 
 	flag.Parse()
 
-	l := zns.FileLoader{Interval: 5 * time.Minute}
+	l := zns.NewFileLoader()
 
 	var tlsCfg *tls.Config
 	if tlsHosts != "" {
@@ -82,7 +81,7 @@ func main() {
 				log.Println("Failed to load TLS certificate: ", err)
 				return
 			} else {
-				log.Println("Loaded TLS certificate from ", file)
+				log.Println("Loaded TLS certificate from", file)
 			}
 			cert = &c
 		})
