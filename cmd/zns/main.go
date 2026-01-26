@@ -25,6 +25,7 @@ var dbPath string
 var tokenPath string
 var root string
 var nodes string
+var blocklist string
 
 func listen() (lnH12, lnDot net.Listener, lnH3 net.PacketConn, err error) {
 	if h12 != "" {
@@ -57,6 +58,7 @@ func main() {
 	flag.StringVar(&tokenPath, "token", "", "File path of auth tokens")
 	flag.StringVar(&root, "root", ".", "Root path of static files")
 	flag.StringVar(&nodes, "nodes", "", "Server nodes info file path")
+	flag.StringVar(&blocklist, "blocklist", "", "AWAvenue Ads Rule (Mosdns V5) blocklist file path")
 
 	flag.Parse()
 
@@ -132,6 +134,26 @@ func main() {
 		})
 
 		h.Auther = fa
+	}
+
+	if blocklist != "" {
+		b := zns.NewBlockList()
+		if err := b.Load(blocklist); err != nil {
+			log.Fatal("Failed to load blocklist: ", err)
+		}
+
+		h.Blocker = b
+		log.Println("Loaded blocklist from ", blocklist)
+
+		l.Watch(blocklist, func(file string) {
+			b := zns.NewBlockList()
+			if err := b.Load(blocklist); err != nil {
+				log.Fatal("Failed to load blocklist: ", err)
+			} else {
+				h.Blocker = b
+				log.Println("Reloaded blocklist from ", file)
+			}
+		})
 	}
 
 	th := &zns.TicketHandler{Pay: pay, Repo: repo}

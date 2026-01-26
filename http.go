@@ -16,6 +16,7 @@ type Handler struct {
 	Upstream string
 	Auther   Author
 	Root     http.Dir
+	Blocker  *BlockList
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -76,7 +77,26 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if q := m.Question[0]; q.Qtype == dns.TypeSVCB && strings.HasPrefix(q.Name, "_dns.") {
+	q := m.Question[0]
+
+	if h.Blocker.Exists(strings.TrimSuffix(q.Name, ".")) {
+		a := &dns.Msg{}
+		a.SetReply(&m)
+		a.Authoritative = true
+		a.Rcode = dns.RcodeNameError
+
+		buf, err := a.Pack()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Add("content-type", "application/dns-message")
+		w.Write(buf)
+		return
+	}
+
+	if q.Qtype == dns.TypeSVCB && strings.HasPrefix(q.Name, "_dns.") {
 		server := strings.TrimPrefix(q.Name, "_dns.")
 		var dohServer, dotServer string
 		if strings.HasPrefix(r.URL.Path, "/dns/") {
