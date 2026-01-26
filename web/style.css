@@ -30,3 +30,59 @@ h1 > img {
 span.warn {
   color: red;
 }
+
+.no-copy {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.doh-url > span {
+  display: inline-block;
+}
+
+.doh-url > .flag {
+  margin-right: 0.2em;
+}
+
+.doh-url > .flag:after {
+  font-size: 0.4em;
+  display: inline-block;
+  color: white;
+  padding: 0px 2px;
+  border-radius: 2px;
+  vertical-align: top;
+  margin-left: -0.2em;
+}
+
+.doh-url > .flag.ipv6:after {
+  content: "v6";
+  background: green;
+}
+
+.doh-url > .flag.ipv4:after {
+  content: "v4";
+  background: red;
+}
+
+.pay-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.2em;
+
+  img {
+    width: 2em;
+    display: inline-block;
+  }
+
+  button {
+    margin: 0;
+    color: white;
+    font-weight: bold;
+    background-color: #4CAF50;
+  }
+
+  button:hover {
+    box-shadow: 0 4px 10px 0 rgba(0, 0, 0, 0.4);
+    transform: translateY(-1px);
+  }
+}
