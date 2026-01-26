@@ -15,9 +15,9 @@
     <link rel="stylesheet" href="/style.css">
   </head>
   <body>
-    <h1>ZNS</h1>
+    <h1><img class="logo" src="/zns.svg">ZNS</h1>
     <p>可能是最简单的 DNS over HTTPS (DoH) 服务了。</p>
-    <h2>服务特色</h2>
+    <h2>🛎️服务特色</h2>
     <dl>
       <dt>🔒保护隐私</dt>
       <dd>仅保存订单号、余额等必要信息，不记录 DNS 查询行为。</dd>
@@ -30,13 +30,13 @@
       <dt>💰按量付费</dt>
       <dd>一元30天，两元60天。连续购买有效期顺延。</dd>
     </dl>
-    <h2>立即体验</h2>
+    <h2>🐎马上体验</h2>
     <input id="cents" type="number" placeholder="金额(元)" min="1">
     <div id="vip" style="display:none;">
-    <input id="tier-0" data-tier="0" type="radio" checked name="tier"><label for="tier-0">普通会员</label>
-    <input id="tier-1" data-tier="1" type="radio" name="tier"><label for="tier-1">高级会员</label>
-    <p><strong>普通会员</strong>：仅限使用普通节点和基础功能。</p>
-    <p><strong>高级会员</strong>：三倍价格，一元10天。可以使用优化节点，支持 IPv4/IPv6 双栈，且支持广告过滤。</p>
+    <input id="tier-0" data-tier="0" type="radio" checked name="tier"><label for="tier-0">基础版</label>
+    <input id="tier-1" data-tier="1" type="radio" name="tier"><label for="tier-1">高级版</label>
+    <p><strong>基础版</strong>：仅限使用基础节点和基础功能。</p>
+    <p><strong>高级版</strong>：三倍价格，一元10天。可以使用优化节点，支持 IPv4/IPv6 双栈，且支持广告过滤。</p>
     </div>
     <br>
     <button id="pay">支付宝付款</button>

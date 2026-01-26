@@ -1,3 +1,13 @@
+h1 {
+  display: flex;
+  align-items: center;
+  gap: 0.1em;
+}
+
+h1 > img {
+  height: 0.8em;
+}
+
 #tickets tr.id {
   border-top: dashed 1px gray;
 }
