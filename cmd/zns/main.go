@@ -155,6 +155,7 @@ func main() {
 	th.Nodes = config.Nodes
 
 	mux := http.NewServeMux()
+	mux.Handle("/metrics", h)
 	mux.Handle("/dns-query", h)
 	mux.Handle("/dns/{token}", h)
 

@@ -20,6 +20,11 @@ type Handler struct {
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	if r.RequestURI == "/metrics" {
+		h.ServeMetrics(w, r)
+		return
+	}
+
 	var token string
 	if r.URL.Path == "/dns-query" {
 		// https://${token}.zns.lehu.in/dns-query
@@ -212,5 +217,30 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer resp.Body.Close()
 
 	w.Header().Add("content-type", "application/dns-message")
+	io.Copy(w, resp.Body)
+}
+
+func (h *Handler) ServeMetrics(w http.ResponseWriter, r *http.Request) {
+	token, _, _ := r.BasicAuth()
+	ok, err := h.Auther.Auth(token)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	} else if !ok {
+		w.Header().Set("WWW-Authenticate", `Basic realm="Restricted"`)
+		w.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	resp, err := http.Get("http://localhost:9100/metrics")
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	defer resp.Body.Close()
+
+	w.WriteHeader(resp.StatusCode)
+	w.Header().Add("content-type", resp.Header.Get("content-type"))
 	io.Copy(w, resp.Body)
 }
