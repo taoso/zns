@@ -99,26 +99,41 @@ fetch(`/ticket/${token}`).then((resp) => {
 
     $('#ticket-title').style.display = 'block';
 
-    $('#qr-msg').innerHTML = `DoH 主线 <span class="warn">(请勿在互联网上传播!)</span>
-    <div class="doh-url">https://${document.domain}/dns/${token}</div>
-    <div class="help">高级权益请加电报群 <a href="https://t.me/+gbMYhiYCBJJmZjBl" target="_blank">https://t.me/+gbMYhiYCBJJmZjBl</a> 获取🤫</div>`;
+    fetch(`/my-nodes/${token}`).then((resp) => {
+      resp.json().then((nodes) => {
+        if (!nodes || nodes.length == 0) return;
+
+        let txt = `你的 DoH 节点<span class="warn">(请勿在互联网上传播🤫)</span>`;
+
+        for (let node of nodes) {
+          txt += `<div class="doh-url"><span class="flag no-copy ${node.ipv6 ? "ipv6" : "ipv4"}">${node.flag}</span>`;
+          txt += `<span>https://${node.host}/dns/${token}</span></div>`;
+        }
+
+        txt += `<div class="help">技术支持请加电报群
+         <a href="https://t.me/+gbMYhiYCBJJmZjBl" target="_blank">https://t.me/+gbMYhiYCBJJmZjBl</a></div>`;
+
+        $('#qr-msg').innerHTML = txt;
+      });
+    });
+
     let keyName = {
       "id":          "记录编号",
       "cents":       "付款金额",
       "tier":        "套餐等级",
+      "expires":     "到期时间",
       "pay_order":   "支付订单",
       "buy_order":   "业务订单",
-      "created":     "创建时间",
-      "expires":     "过期时间",
+      "created":     "付款时间",
     };
     tickets.forEach((ticket) => {
       let isTime = ["created", "updated", "expires"];
-      for ([key, value] of Object.entries(ticket)) {
-        if (!keyName[key]) continue;
+      for ([key, name] of Object.entries(keyName)) {
+        value = ticket[key];
 
         let tr = _('tr');
         let th = _('th');
-        th.innerText = keyName[key];
+        th.innerText = name;
         let td = _('td');
         if (key === 'id') {
             tr.classList.add('id');
@@ -130,14 +145,14 @@ fetch(`/ticket/${token}`).then((resp) => {
         if (key === 'cents') {
           value = (value / 100).toFixed(2) + ' 元';
         }
+        if (key === 'tier') {
+          value = value === 0 ? '🥉基础版' : (value === 1 ? '🥈高级版' : '🥇精英版');
+        }
         td.innerText = value;
         tr.appendChild(th);
         tr.appendChild(td);
         t.appendChild(tr);
       }
-      // let tr = _('tr');
-      // tr.appendChild(_('hr'));
-      // t.appendChild(tr);
     });
   });
 });
