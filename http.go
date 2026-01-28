@@ -44,7 +44,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method == http.MethodGet {
 		q := r.URL.Query().Get("dns")
 		if q == "" {
-			if h.Root == "" && !strings.HasPrefix(r.Host, "zns.") {
+			if !strings.HasPrefix(r.Host, "zns.") {
 				_, host, _ := strings.Cut(r.Host, ".")
 				http.Redirect(w, r, "https://"+host+r.RequestURI, http.StatusFound)
 				return
