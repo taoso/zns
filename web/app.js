@@ -117,6 +117,7 @@ fetch(`/ticket/${token}`).then((resp) => {
       });
     });
 
+    let mytier = 0;
     let keyName = {
       "id":          "记录编号",
       "cents":       "付款金额",
@@ -127,6 +128,9 @@ fetch(`/ticket/${token}`).then((resp) => {
       "created":     "付款时间",
     };
     tickets.forEach((ticket) => {
+      if (ticket.tier > mytier) {
+        mytier = ticket.tier;
+      }
       let isTime = ["created", "updated", "expires"];
       for ([key, name] of Object.entries(keyName)) {
         value = ticket[key];
@@ -154,6 +158,8 @@ fetch(`/ticket/${token}`).then((resp) => {
         t.appendChild(tr);
       }
     });
+
+    $(`#tier-${mytier}`).click();
   });
 });
 })()
