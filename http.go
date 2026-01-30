@@ -7,10 +7,26 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"strconv"
 	"strings"
 
 	"github.com/miekg/dns"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
+
+var dohUpstreamRequestDuration = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Name:    "doh_upstream_request_duration_seconds",
+		Help:    "Duration of DoH upstream requests in seconds",
+		Buckets: prometheus.DefBuckets,
+	},
+	[]string{"proto"},
+)
+
+func init() {
+	prometheus.MustRegister(dohUpstreamRequestDuration)
+}
 
 type Handler struct {
 	Upstream string
@@ -209,11 +225,18 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	proto := "h" + strconv.Itoa(r.ProtoMajor)
+	timer := prometheus.NewTimer(dohUpstreamRequestDuration.WithLabelValues(proto))
+
 	resp, err := http.Post(h.Upstream, "application/dns-message", bytes.NewReader(question))
+
+	timer.ObserveDuration()
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	defer resp.Body.Close()
 
 	w.Header().Add("content-type", "application/dns-message")
@@ -232,15 +255,5 @@ func (h *Handler) ServeMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp, err := http.Get("http://localhost:9100/metrics")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	defer resp.Body.Close()
-
-	w.WriteHeader(resp.StatusCode)
-	w.Header().Add("content-type", resp.Header.Get("content-type"))
-	io.Copy(w, resp.Body)
+	promhttp.Handler().ServeHTTP(w, r)
 }
