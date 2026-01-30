@@ -29,7 +29,7 @@ func init() {
 }
 
 type Handler struct {
-	Upstream string
+	Upstream Upstream
 	Auther   Author
 	Root     http.Dir
 	Blocker  *BlockList
@@ -227,20 +227,16 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	proto := "h" + strconv.Itoa(r.ProtoMajor)
 	timer := prometheus.NewTimer(dohUpstreamRequestDuration.WithLabelValues(proto))
+	defer timer.ObserveDuration()
 
-	resp, err := http.Post(h.Upstream, "application/dns-message", bytes.NewReader(question))
-
-	timer.ObserveDuration()
-
+	resp, err := h.Upstream.Query(&m)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	defer resp.Body.Close()
-
 	w.Header().Add("content-type", "application/dns-message")
-	io.Copy(w, resp.Body)
+	io.Copy(w, bytes.NewReader(resp))
 }
 
 func (h *Handler) ServeMetrics(w http.ResponseWriter, r *http.Request) {

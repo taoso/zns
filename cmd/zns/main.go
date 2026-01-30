@@ -8,8 +8,11 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/quic-go/quic-go"
 	"github.com/quic-go/quic-go/http3"
 	"github.com/taoso/zns"
 	"golang.org/x/crypto/acme/autocert"
@@ -105,9 +108,26 @@ func main() {
 	}
 
 	h := &zns.Handler{
-		Upstream: config.Upstream,
-		Root:     http.Dir(config.Root),
-		Auther:   zns.DBAuthor{Repo: repo},
+		Root:   http.Dir(config.Root),
+		Auther: zns.DBAuthor{Repo: repo},
+	}
+
+	if up, found := strings.CutPrefix(config.Upstream, "udp://"); found {
+		h.Upstream = &zns.UpstreamPlain{
+			Server:  up,
+			Timeout: 1 * time.Second,
+		}
+	} else if up, found := strings.CutPrefix(config.Upstream, "h3://"); found {
+		h.Upstream = &zns.UpstreamHTTP{
+			Server:  "https://" + up,
+			Timeout: 1 * time.Second,
+			HTTP3:   true,
+		}
+	} else {
+		h.Upstream = &zns.UpstreamHTTP{
+			Server:  config.Upstream,
+			Timeout: 1 * time.Second,
+		}
 	}
 
 	if config.TokenPath != "" {
@@ -184,7 +204,13 @@ func main() {
 		p := lnH3.LocalAddr().(*net.UDPAddr).Port
 		altSvc = fmt.Sprintf(`h3=":%d"`, p)
 
-		h3 := http3.Server{Handler: mux, TLSConfig: tlsCfg}
+		h3 := http3.Server{
+			Handler:   mux,
+			TLSConfig: tlsCfg,
+			QUICConfig: &quic.Config{
+				Allow0RTT: true,
+			},
+		}
 		go h3.Serve(lnH3)
 	}
 
